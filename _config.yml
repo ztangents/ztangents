@@ -1,5 +1,5 @@
 ---
-theme: minima
+remote_theme: jekyll/minima
 title: OmniTangent
 author: omnitangent
 google_analytics: G-S4NDZ0GWCT
