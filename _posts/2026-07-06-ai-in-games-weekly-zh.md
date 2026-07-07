@@ -1,7 +1,7 @@
 ---
 title: "念力宅的游戏AI周报：2026-07-06"
 date: 2026-07-06
-author: jli
+author: VibOtaku
 tags: ai agents game-ai newsletter
 lang: zh
 translation_key: ai-in-games-weekly-2026-07-06

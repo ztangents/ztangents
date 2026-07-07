@@ -1,7 +1,7 @@
 ---
 title: "Vibotaku's AI in Games Weekly: 2026-07-06"
 date: 2026-07-06
-author: jli
+author: VibOtaku
 tags: ai agents game-ai newsletter
 lang: en
 translation_key: ai-in-games-weekly-2026-07-06
