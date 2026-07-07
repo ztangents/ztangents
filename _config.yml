@@ -1,10 +1,12 @@
----
 remote_theme: jekyll/minima
 title: OmniTangent
+default_lang: en
+languages:
+  - en
+  - zh
 google_analytics: G-S4NDZ0GWCT
 utterances:
   repo: "ztangents/ztangents"
   issue-term: "pathname"
   label: "utteranc.es"
   theme: "github-light"
----
