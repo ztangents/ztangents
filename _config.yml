@@ -1,5 +1,6 @@
 remote_theme: jekyll/minima
 title: OmniTangent
+description: Reflecting on AI, Tech, Game development, e-commerce and more
 default_lang: en
 languages:
   - en
