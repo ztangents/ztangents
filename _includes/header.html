@@ -1,0 +1,20 @@
+<header class="site-header">
+  <div class="wrapper">
+    <a class="site-title" rel="author" href="{{ '/' | relative_url }}">{{ site.title | escape }}</a>
+
+    <nav class="site-nav">
+      <input type="checkbox" id="nav-trigger" />
+      <label for="nav-trigger">
+        <span class="menu-icon"></span>
+      </label>
+
+      <div class="nav-items">
+        {%- if page.lang == "zh" -%}
+          <a class="nav-item" href="{{ '/' | relative_url }}">EN</a>
+        {%- else -%}
+          <a class="nav-item" href="{{ '/zh/' | relative_url }}">中文</a>
+        {%- endif -%}
+      </div>
+    </nav>
+  </div>
+</header>
