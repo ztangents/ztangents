@@ -81,12 +81,6 @@ lang: en
 - **Links:** [arXiv](https://arxiv.org/abs/2607.05392) / [Project page](https://research.paulengstler.com/syncity-3k/)
 - **Vibotaku's Note:** SynCity 3000 matters for game teams because scene generation is becoming a pipeline problem, not a single-asset problem. The method adapts image-to-3D generation into a convolutional operator that can generate coherent 3D scenes from dimetric layout images. The practical angle is layout control: world generation systems need to respect spatial structure, object placement, and scene scale if they are going to feed level design tools, synthetic training data, or embodied-agent environments.
 
-## Honorable mentions
-
-- **Embodied.cpp: A Portable Inference Runtime of Embodied AI Models on Heterogeneous Robots:** A systems-heavy paper about deploying VLA models and world-action models with multi-rate closed-loop execution, latency-first batch-1 inference, and portable C++ runtime abstractions. Relevant for teams thinking about local inference in simulators, robots, edge devices, or game runtimes. Checked links: [arXiv](https://arxiv.org/abs/2607.02501), [GitHub](https://github.com/SEU-PAISys/Embodied.cpp).
-- **UI-MOPD: Multi-Platform On-Policy Distillation for Continual GUI Agent Learning:** Useful for cross-platform GUI agents. The paper builds Uni-GUI and uses platform-conditioned multi-teacher distillation to preserve behavior across OSWorld and MobileWorld. That maps well to game editor agents, launcher agents, mobile game automation, and live-ops tooling. Checked links: [arXiv](https://arxiv.org/abs/2607.04425), [Project page](https://elispectre.github.io/UI-MOPD/).
-- **LLM-as-a-Verifier extension for Claude Code:** The paper's developer-facing extension is a useful signal for coding-agent infrastructure: verification is becoming part of the agent loop, not a post-hoc report. Checked links: [Project page](https://llm-as-a-verifier.com/), [GitHub](https://github.com/llm-as-a-verifier/llm-as-a-verifier).
-
 ## References
 
 - Multiplayer Interactive World Models with Representation Autoencoders: https://arxiv.org/abs/2607.05352
