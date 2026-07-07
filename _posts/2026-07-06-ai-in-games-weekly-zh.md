@@ -1,12 +1,10 @@
 ---
-title: "念力宅的 AI in Games Weekly：2026-07-06"
+title: "念力宅的游戏AI周报：2026-07-06"
 date: 2026-07-06
 author: jli
 tags: ai agents game-ai newsletter
 lang: zh
 ---
-
-# 念力宅的 AI in Games Weekly
 
 **2026-06-29 - 2026-07-06**
 

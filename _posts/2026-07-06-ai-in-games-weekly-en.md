@@ -6,8 +6,6 @@ tags: ai agents game-ai newsletter
 lang: en
 ---
 
-# Vibotaku's AI in Games Weekly
-
 **2026-06-29 - 2026-07-06**
 
 ## Highlights
