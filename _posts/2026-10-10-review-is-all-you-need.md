@@ -22,8 +22,14 @@ An agent can do the first two steps on its own. It can also look at the result, 
 | Review rounds | 11, from Oct 6 to Oct 10 |
 | Shots reviewed | 531 stills and clips (clips with the game's own sound from round 8 on) |
 | Notes | 95: 76 fixed and answered, 19 from round 11 in progress |
-| Code | about 65,000 lines of C# in 215 files, all written by the agent |
+| Playable | a 2 km island in ten biomes, four heroines to swap between, 24 enemy camps (two of them forts), 8 trials, 43 chests, 10 altars and a two-phase boss |
 | Review media | about 1.2 GB on eight review pages and an index |
+
+#### What you can play
+
+A 75-second reel cut from round 11's review clips, recorded in the game by the agent's own scripts, with the game's sound.
+
+{% include youtube.html id="REEL_PENDING" poster="/assets/images/review-is-all-you-need/yt-reel.webp" alt="The heroine breaking into Dustfang Bastion, one of the forts in Token Isles" caption='Chapters: <a href="https://www.youtube.com/watch?v=REEL_PENDING&amp;t=0s" data-yt-start="0">Resonance Arts, chained</a> · <a href="https://www.youtube.com/watch?v=REEL_PENDING&amp;t=14s" data-yt-start="14">Storming a fort</a> · <a href="https://www.youtube.com/watch?v=REEL_PENDING&amp;t=26s" data-yt-start="26">Glide trial</a> · <a href="https://www.youtube.com/watch?v=REEL_PENDING&amp;t=37s" data-yt-start="37">Attuning an altar</a> · <a href="https://www.youtube.com/watch?v=REEL_PENDING&amp;t=49s" data-yt-start="49">Legendary loot</a> · <a href="https://www.youtube.com/watch?v=REEL_PENDING&amp;t=61s" data-yt-start="61">Malgrath, phase two</a>' %}
 
 ### Why an artifact
 
@@ -98,8 +104,14 @@ Stills show composition. Most of what makes a game feel wrong, though, happens o
 [![A clip of a skeleton knight's attacks with two timestamped notes, one asking "what are those slow down in attack sequence? did we added it in ourselves?" and the agent's reply "Yes, partly our own doing"](/assets/images/review-is-all-you-need/review-timing-note.webp)](/assets/images/review-is-all-you-need/review-timing-note.webp)
 *Timing notes on a clip. Asked "did we add it ourselves?", the agent answered "Yes, partly our own doing" and explained both causes.*
 
+{% include youtube.html id="bNjWCGlLiBc" start="4" poster="/assets/images/review-is-all-you-need/yt-knight.webp" alt="The skeleton knight's attacks in round 6 and round 7, side by side" caption='The note and its fix: round 6 (left) and round 7 (right), side by side and in sync. Round 6 was recorded at half speed, and attack 3 is cut short by the next swing.' %}
+
 [![The waystone prayer clip with a pin at 00:11.20 on the heroine, and the note "Let's not transition the camera angle on this interaction"](/assets/images/review-is-all-you-need/review-video-note.webp)](/assets/images/review-is-all-you-need/review-video-note.webp)
 *A camera note on a video timestamp. The "Look at:" text on the right is the agent describing what the clip should show, so I check its claims instead of guessing what changed.*
+
+The same prayer before and after the fix, with sound on:
+
+{% include youtube.html id="bNjWCGlLiBc" start="23" poster="/assets/images/review-is-all-you-need/yt-waystone.webp" alt="The waystone prayer in round 10" caption='Round 10, then round 11. In round 10 the camera cuts to her side and the sound stutters (the recorder&#39;s 12 ms holes); in round 11 the camera stays where she walked in and the sound is clean.' %}
 
 In round 11, 16 of the 19 notes are pinned to a video timestamp.
 
@@ -169,4 +181,4 @@ The agent also keeps a runbook (`CLAUDE.md`) up to date: builder order, commands
 - **Split pages instead of cutting quality.** Publish in batches, copy instead of re-uploading, and carry history forward.
 - **Keep everything in git, including the notes.**
 
-Writing 65,000 lines of C# took the agent a few days. The scarce resource was never code. It was my attention, and how precisely I could say what was wrong. Every hour spent making review faster and more exact paid off in every round after it.
+In under five days the game went from a generated island to something you can play: glide across ten biomes, swap heroines in the middle of a fight, storm forts, solve trials, open chests, chart the map altar by altar and beat a two-phase boss. Every one of those features went through review more than once before it felt right. The scarce resource was never what the agent could build. It was my attention, and how precisely I could say what was wrong. Every hour spent making review faster and more exact paid off in every round after it.

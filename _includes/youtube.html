@@ -1,0 +1,14 @@
+{%- comment -%}
+  A YouTube video shown as its poster with a play button; the player (youtube-nocookie) loads only when clicked.
+  id: the video id; start: seconds to start at; poster: an image in the repo; alt: the poster's description.
+  Without JavaScript the poster is a link to the video on YouTube.
+{%- endcomment -%}
+<figure class="yt">
+  <a class="yt-facade" href="https://www.youtube.com/watch?v={{ include.id }}{% if include.start %}&amp;t={{ include.start }}s{% endif %}" data-yt="{{ include.id }}" data-start="{{ include.start | default: 0 }}">
+    <img src="{{ include.poster | relative_url }}" alt="{{ include.alt | escape }}" loading="lazy">
+    <span class="yt-play" aria-hidden="true"></span>
+  </a>
+  {%- if include.caption %}
+  <figcaption>{{ include.caption }}</figcaption>
+  {%- endif %}
+</figure>

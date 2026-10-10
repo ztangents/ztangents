@@ -22,8 +22,14 @@ Token Isles（代码仓库叫 TokenImpact）是一座边长 2 公里的岛屿，
 | 评审轮次 | 11 轮，10 月 6 日至 10 月 10 日 |
 | 评审镜头 | 531 个静帧和片段（从第 8 轮起，片段带游戏本身的声音） |
 | 批注 | 95 条：76 条已修复并回复，第 11 轮的 19 条正在处理 |
-| 代码 | 约 65,000 行 C#，215 个文件，全部由智能体编写 |
+| 可玩内容 | 一座有十个生物群系的 2 公里岛屿，四位可随时切换的女主角，24 个敌人营地（其中两座是要塞），8 个试炼，43 个宝箱，10 座祭坛，以及一个两阶段 Boss |
 | 评审素材 | 约 1.2 GB，分布在八个评审页面和一个索引页 |
+
+#### 现在能玩到什么
+
+一段 75 秒的集锦，剪自第 11 轮的评审片段，由智能体自己的脚本在游戏中录制，带游戏本身的声音。
+
+{% include youtube.html id="REEL_PENDING" poster="/assets/images/review-is-all-you-need/yt-reel.webp" alt="女主角攻入游戏中的要塞 Dustfang Bastion" caption='章节：<a href="https://www.youtube.com/watch?v=REEL_PENDING&amp;t=0s" data-yt-start="0">连锁共鸣技</a> · <a href="https://www.youtube.com/watch?v=REEL_PENDING&amp;t=14s" data-yt-start="14">攻打要塞</a> · <a href="https://www.youtube.com/watch?v=REEL_PENDING&amp;t=26s" data-yt-start="26">滑翔试炼</a> · <a href="https://www.youtube.com/watch?v=REEL_PENDING&amp;t=37s" data-yt-start="37">与祭坛共鸣</a> · <a href="https://www.youtube.com/watch?v=REEL_PENDING&amp;t=49s" data-yt-start="49">传说战利品</a> · <a href="https://www.youtube.com/watch?v=REEL_PENDING&amp;t=61s" data-yt-start="61">Malgrath 第二阶段</a>' %}
 
 ### 为什么用 artifact
 
@@ -98,8 +104,14 @@ Artifact 是 Claude 发布到 claude.ai 上的网页，默认私有，URL 固定
 [![骷髅骑士攻击片段上的两条带时间戳的批注，其中一条问“攻击里那些减速是我们自己加的吗？”，智能体回复“是的，部分是我们自己造成的”](/assets/images/review-is-all-you-need/review-timing-note.webp)](/assets/images/review-is-all-you-need/review-timing-note.webp)
 *片段上的时机类批注。我问“是我们自己加的吗？”，智能体回答“是的，部分是我们自己造成的”（Yes, partly our own doing），并解释了两个原因。*
 
+{% include youtube.html id="bNjWCGlLiBc" start="4" poster="/assets/images/review-is-all-you-need/yt-knight.webp" alt="骷髅骑士在第 6 轮和第 7 轮的攻击，并排播放" caption='批注和它的修复：左边是第 6 轮，右边是第 7 轮，并排同步播放。第 6 轮以一半速度录制，第三段攻击被下一次挥砍截断。' %}
+
 [![路标石祈祷片段停在 00:11.20，女主角身上有一个标记，批注写着“这个交互不要切换镜头角度”](/assets/images/review-is-all-you-need/review-video-note.webp)](/assets/images/review-is-all-you-need/review-video-note.webp)
 *钉在视频时间戳上的镜头类批注。右侧的 “Look at:” 是智能体对这个片段应该呈现什么的说明，所以我是在核对它的说法，而不是去猜改了什么。*
+
+修复前后的同一次祈祷，请打开声音：
+
+{% include youtube.html id="bNjWCGlLiBc" start="23" poster="/assets/images/review-is-all-you-need/yt-waystone.webp" alt="第 10 轮的路标石祈祷" caption='先是第 10 轮，然后是第 11 轮。第 10 轮镜头切到她的侧面，声音有卡顿（录制器每帧 12 毫秒的空洞）；第 11 轮镜头保持在她走过来时的位置，声音干净。' %}
 
 第 11 轮的 19 条批注中，有 16 条钉在视频时间戳上。
 
@@ -169,4 +181,4 @@ Artifact 有体积限制，而游戏评审会产生大量视频：
 - **拆分页面，而不是降低质量。** 分批发布，复制而不是重新上传，把历史带下去。
 - **所有东西都放进 git，包括批注。**
 
-智能体写 65,000 行 C# 只用了几天。稀缺的从来不是代码，而是我的注意力，以及我能多精确地说出哪里不对。每一个花在让评审更快、更准的小时，都在之后的每一轮里得到了回报。
+不到五天，这个游戏就从一座生成出来的岛屿，变成了可以玩的东西：在十个生物群系之间滑翔，战斗中途切换女主角，攻打要塞，解开试炼，打开宝箱，借助一座座祭坛逐片揭开地图，再打败一个两阶段的 Boss。每一项功能在手感对之前都经过了不止一轮评审。稀缺的从来不是智能体能做出什么，而是我的注意力，以及我能多精确地说出哪里不对。每一个花在让评审更快、更准的小时，都在之后的每一轮里得到了回报。

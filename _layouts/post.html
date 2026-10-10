@@ -38,3 +38,36 @@ layout: base
 
   <a class="u-url" href="{{ page.url | relative_url }}" hidden></a>
 </article>
+
+{%- if content contains "data-yt" %}
+<script>
+  // A YouTube poster becomes the player when clicked (autoplay, from the poster's start). A link with
+  // data-yt-start in a video's caption starts that video at that second.
+  (function () {
+    function play(facade, start) {
+      var frame = document.createElement("iframe");
+      frame.src = "https://www.youtube-nocookie.com/embed/" + facade.dataset.yt + "?autoplay=1&rel=0&start=" + (start || 0);
+      frame.title = facade.querySelector("img").alt;
+      frame.allow = "autoplay; encrypted-media; picture-in-picture; fullscreen";
+      frame.allowFullscreen = true;
+      frame.dataset.yt = facade.dataset.yt;
+      facade.replaceWith(frame);
+    }
+    document.addEventListener("click", function (e) {
+      var facade = e.target.closest("a.yt-facade");
+      if (facade) { e.preventDefault(); play(facade, facade.dataset.start); return; }
+      var seek = e.target.closest("a[data-yt-start]");
+      if (!seek) return;
+      var fig = seek.closest(".yt") || document.querySelector('[data-yt="' + seek.dataset.ytId + '"]');
+      var target = fig && (fig.matches("[data-yt]") ? fig : fig.querySelector("[data-yt]"));
+      if (!target) return;
+      e.preventDefault();
+      if (target.tagName === "IFRAME") {
+        target.src = target.src.replace(/start=\d+/, "start=" + seek.dataset.ytStart);
+      } else {
+        play(target, seek.dataset.ytStart);
+      }
+    });
+  })();
+</script>
+{%- endif %}
