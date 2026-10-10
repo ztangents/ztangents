@@ -3,6 +3,8 @@ title: "Review is All You Need"
 date: 2026-10-10
 author: jli
 tags: ai agents game-development claude unity
+lang: en
+translation_key: review-is-all-you-need
 ---
 
 ![The heroine fighting skeletons inside Dustfang Bastion, one of the game's forts](/assets/images/review-is-all-you-need/hero.webp)

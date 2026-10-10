@@ -2,6 +2,17 @@
   <div class="wrapper">
     <a class="site-title" rel="author" href="{{ '/' | relative_url }}">{{ site.title | escape }}</a>
 
+    {%- comment -%}
+      The language switch goes to this post's translation (same translation_key), else to the other
+      language's weekly page from a weekly page, else to the other language's home page.
+    {%- endcomment -%}
+    {%- assign translation = nil -%}
+    {%- if page.translation_key -%}
+      {%- for p in site.posts -%}
+        {%- if p.translation_key == page.translation_key and p.url != page.url -%}{%- assign translation = p -%}{%- endif -%}
+      {%- endfor -%}
+    {%- endif -%}
+
     <nav class="site-nav">
       <input type="checkbox" id="nav-trigger" />
       <label for="nav-trigger">
@@ -10,19 +21,17 @@
 
       <div class="nav-items">
         {%- if page.lang == "zh" -%}
+          {%- if translation -%}{%- assign switch_url = translation.url -%}
+          {%- elsif page.weekly -%}{%- assign switch_url = site.weekly.en.url -%}
+          {%- else -%}{%- assign switch_url = '/' -%}{%- endif -%}
           <a class="nav-item" href="{{ site.weekly.zh.url | relative_url }}">{{ site.weekly.zh.title }}</a>
-          {%- if page.weekly -%}
-          <a class="nav-item" href="{{ site.weekly.en.url | relative_url }}">EN</a>
-          {%- else -%}
-          <a class="nav-item" href="{{ '/' | relative_url }}">EN</a>
-          {%- endif -%}
+          <a class="nav-item" href="{{ switch_url | relative_url }}">EN</a>
         {%- else -%}
+          {%- if translation -%}{%- assign switch_url = translation.url -%}
+          {%- elsif page.weekly -%}{%- assign switch_url = site.weekly.zh.url -%}
+          {%- else -%}{%- assign switch_url = '/zh/' -%}{%- endif -%}
           <a class="nav-item" href="{{ site.weekly.en.url | relative_url }}">{{ site.weekly.en.title }}</a>
-          {%- if page.weekly -%}
-          <a class="nav-item" href="{{ site.weekly.zh.url | relative_url }}">中文</a>
-          {%- else -%}
-          <a class="nav-item" href="{{ '/zh/' | relative_url }}">中文</a>
-          {%- endif -%}
+          <a class="nav-item" href="{{ switch_url | relative_url }}">中文</a>
         {%- endif -%}
       </div>
     </nav>
