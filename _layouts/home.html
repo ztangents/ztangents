@@ -15,15 +15,42 @@ layout: base
 {%- endif -%}
 
 {%- assign date_format = site.minima.date_format | default: "%b %-d, %Y" -%}
+{%- assign weekly_tag = site.weekly.tag -%}
+{%- if page.lang == "zh" -%}
+  {%- assign weekly = site.weekly.zh -%}
+{%- else -%}
+  {%- assign weekly = site.weekly.en -%}
+{%- endif -%}
+
+{%- comment -%}
+  The weekly page (page.weekly: true) lists only the newsletter; the home pages list everything else
+  and point at the newsletter's latest issue.
+{%- endcomment -%}
 {%- assign visible_posts_count = 0 -%}
+{%- assign weekly_count = 0 -%}
+{%- assign latest_weekly = nil -%}
 
 <ul class="post-list">
   {%- for post in posts -%}
-    {%- assign show_post = false -%}
+    {%- assign in_lang = false -%}
     {%- if page.lang == "zh" -%}
-      {%- if post.lang == "zh" -%}{%- assign show_post = true -%}{%- endif -%}
+      {%- if post.lang == "zh" -%}{%- assign in_lang = true -%}{%- endif -%}
     {%- else -%}
-      {%- unless post.lang == "zh" -%}{%- assign show_post = true -%}{%- endunless -%}
+      {%- unless post.lang == "zh" -%}{%- assign in_lang = true -%}{%- endunless -%}
+    {%- endif -%}
+    {%- assign is_weekly = false -%}
+    {%- if post.tags contains weekly_tag -%}{%- assign is_weekly = true -%}{%- endif -%}
+    {%- if in_lang and is_weekly -%}
+      {%- assign weekly_count = weekly_count | plus: 1 -%}
+      {%- if latest_weekly == nil -%}{%- assign latest_weekly = post -%}{%- endif -%}
+    {%- endif -%}
+    {%- assign show_post = false -%}
+    {%- if in_lang -%}
+      {%- if page.weekly -%}
+        {%- assign show_post = is_weekly -%}
+      {%- else -%}
+        {%- unless is_weekly -%}{%- assign show_post = true -%}{%- endunless -%}
+      {%- endif -%}
     {%- endif -%}
     {%- if show_post -%}
       {%- assign visible_posts_count = visible_posts_count | plus: 1 -%}
@@ -42,6 +69,21 @@ layout: base
   {%- endfor -%}
 </ul>
 
-{%- if visible_posts_count == 0 -%}
-<p>No posts yet.</p>
+{%- if visible_posts_count == 0 and latest_weekly == nil -%}
+<p>{% if page.lang == "zh" %}暂无文章。{% else %}No posts yet.{% endif %}</p>
+{%- endif -%}
+
+{%- if latest_weekly and page.weekly != true -%}
+<h2 class="post-list-heading">{{ weekly.title }}</h2>
+<ul class="post-list">
+  <li>
+    <span class="post-meta">{{ latest_weekly.date | date: date_format }} · {% if page.lang == "zh" %}最新一期{% else %}Latest issue{% endif %}</span>
+    <h3>
+      <a class="post-link" href="{{ latest_weekly.url | relative_url }}">
+        {{ latest_weekly.title | escape }}
+      </a>
+    </h3>
+    <p><a href="{{ weekly.url | relative_url }}">{% if page.lang == "zh" %}查看全部 {{ weekly_count }} 期 →{% else %}All {{ weekly_count }} issues →{% endif %}</a></p>
+  </li>
+</ul>
 {%- endif -%}

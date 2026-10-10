@@ -10,9 +10,19 @@
 
       <div class="nav-items">
         {%- if page.lang == "zh" -%}
+          <a class="nav-item" href="{{ site.weekly.zh.url | relative_url }}">{{ site.weekly.zh.title }}</a>
+          {%- if page.weekly -%}
+          <a class="nav-item" href="{{ site.weekly.en.url | relative_url }}">EN</a>
+          {%- else -%}
           <a class="nav-item" href="{{ '/' | relative_url }}">EN</a>
+          {%- endif -%}
         {%- else -%}
+          <a class="nav-item" href="{{ site.weekly.en.url | relative_url }}">{{ site.weekly.en.title }}</a>
+          {%- if page.weekly -%}
+          <a class="nav-item" href="{{ site.weekly.zh.url | relative_url }}">中文</a>
+          {%- else -%}
           <a class="nav-item" href="{{ '/zh/' | relative_url }}">中文</a>
+          {%- endif -%}
         {%- endif -%}
       </div>
     </nav>

@@ -23,6 +23,10 @@ layout: base
             <span class="p-author h-card" itemprop="name">{{ author }}</span></span>
             {%- if forloop.last == false %}, {% endif -%}
         {% endfor %}
+      {%- endif -%}
+      {%- if page.tags contains site.weekly.tag -%}
+        {%- if page.lang == "zh" -%}{%- assign weekly = site.weekly.zh -%}{%- else -%}{%- assign weekly = site.weekly.en -%}{%- endif %}
+        • <a href="{{ weekly.url | relative_url }}">{{ weekly.title }}</a>
       {%- endif -%}</p>
   </header>
 

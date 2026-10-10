@@ -7,6 +7,15 @@ languages:
   - zh
 plugins:
   - jekyll-feed
+# The weekly newsletter lives on its own page per language; the home pages list the other posts.
+weekly:
+  tag: newsletter
+  en:
+    title: "AI in Games Weekly"
+    url: /weekly/
+  zh:
+    title: "游戏AI周报"
+    url: /zh/weekly/
 google_analytics: G-S4NDZ0GWCT
 utterances:
   repo: "ztangents/ztangents"
