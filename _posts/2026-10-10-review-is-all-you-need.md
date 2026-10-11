@@ -7,57 +7,83 @@ lang: en
 translation_key: review-is-all-you-need
 ---
 
-![The heroine fighting skeletons inside Dustfang Bastion, one of the game's forts](/assets/images/review-is-all-you-need/hero.webp)
+![The heroine fighting skeletons inside a fort in Token Isles](/assets/images/review-is-all-you-need/hero.webp)
 
-> TL;DR - An AI agent (Claude Code on Opus 5.5) built a Genshin-like action RPG prototype in Unity in under five days, out of purchased asset packs. It wrote all the code. My job was review. What made that work wasn't a clever prompt. It was a review page that the agent published as a Claude artifact every round. On that page I could drop a pin on a frame of a clip, and the agent could read the pin back, fix the problem and answer the note.
+I spent last week making a game with Claude Opus 5.5. The pitch was a stylized open world. I gave Opus the idea, iterated on it with Opus for five days, and I'm still a little amazed at where it ended up. Its visual and spatial reasoning is far beyond anything I'd seen from a model before, and the cost is hard to argue with: the whole week ran on my $200 subscription. The version in this post took about 65 hours of agent work and around 5.5 billion tokens. At API list prices that would have been roughly $1,650.
 
-### The project
+First the game, then the way I reviewed it, which is the part I'd tell anyone to copy.
 
-Token Isles (the repo is called TokenImpact) is a 2 km island with ten biomes and 38 named places. It has a sword-and-shield heroine and later a party of four, skeleton camps and forts, a two-phase necromancer boss, a quest line with conversations, loot, an inventory, puzzles, chests, and a fog of war lifted by altars. None of the scenes are built by hand. Editor "builders" generate everything from a library of purchased asset packs, so most work goes the same way: change a builder, run it, look at the result.
+## What the game is
 
-An agent can do the first two steps on its own. It can also look at the result, but it can't tell whether a sword swing feels heavy, a camera cut is jarring or a village looks lived in. That part is review, and review is where my time went.
+It's called Token Isles (the repo is TokenImpact), a third-person action RPG set on an island.
 
-| What | How much |
-| --- | --- |
-| Review rounds | 11, from Oct 6 to Oct 10 |
-| Shots reviewed | 531 stills and clips (clips with the game's own sound from round 8 on) |
-| Notes | 95: 76 fixed and answered, 19 from round 11 in progress |
-| Playable | a 2 km island in ten biomes, four heroines to swap between, 24 enemy camps (two of them forts), 8 trials, 43 chests, 10 altars and a two-phase boss |
-| Review media | about 1.2 GB on eight review pages and an index |
+### A world that made sense on the first try
 
-#### What you can play
+The island is 2 km on each side, split into ten biomes: green woodland around the starting town, snowy highlands with a citadel, a sakura isle with a castle keep, red-rock canyons, a marsh, a coral atoll and a violet crater called the Hollow, among others. This is what surprised me most. I handed Opus a height map, and the very first world it generated already made sense. Coasts follow the land, biomes blend at their borders, and roads lead somewhere. I tried something similar a few months ago and got nothing close to this.
 
-A 75-second reel cut from round 11's review clips, recorded in the game by the agent's own scripts, with the game's sound.
+[![The whole island from above in round 1](/assets/images/review-is-all-you-need/world-round1.webp)](/assets/images/review-is-all-you-need/world-round1.webp)
+*Round 1: the first world Opus generated, before I had given any feedback.*
 
-{% include youtube.html id="REEL_PENDING" poster="/assets/images/review-is-all-you-need/yt-reel.webp" alt="The heroine breaking into Dustfang Bastion, one of the forts in Token Isles" caption='Chapters: <a href="https://www.youtube.com/watch?v=REEL_PENDING&amp;t=0s" data-yt-start="0">Resonance Arts, chained</a> · <a href="https://www.youtube.com/watch?v=REEL_PENDING&amp;t=14s" data-yt-start="14">Storming a fort</a> · <a href="https://www.youtube.com/watch?v=REEL_PENDING&amp;t=26s" data-yt-start="26">Glide trial</a> · <a href="https://www.youtube.com/watch?v=REEL_PENDING&amp;t=37s" data-yt-start="37">Attuning an altar</a> · <a href="https://www.youtube.com/watch?v=REEL_PENDING&amp;t=49s" data-yt-start="49">Legendary loot</a> · <a href="https://www.youtube.com/watch?v=REEL_PENDING&amp;t=61s" data-yt-start="61">Malgrath, phase two</a>' %}
+I used to assume world building needed a separate PCG harness, some node graph or procedural tool for the model to drive. After this week I don't think that matters nearly as much as it used to. Opus wrote its own generator as it went (heights, terrain, places, roads, water, trees, props, navigation, the in-game map) and improved it every round. The model figures the world out by itself.
 
-### Why an artifact
+[![A view from the starting town with columns of light on distant peaks](/assets/images/review-is-all-you-need/vista-windhaven.webp)](/assets/images/review-is-all-you-need/vista-windhaven.webp)
+*Round 11, looking out from the starting town. Each column of light is a region's altar.*
 
-On day one I asked for visual review instead of prose. Reading a paragraph about a mountain doesn't tell you much. Pasting screenshots into chat doesn't work well either: chat has no timeline, a screenshot can't be compared with last round's, and nothing tells the agent which feedback it has already handled.
+### Cartoon characters in a cartoon world
 
-An artifact is a web page that Claude publishes to claude.ai. It is private by default and has a stable URL. A plain page would only be a gallery. Three runtime capabilities turn it into a review tool:
+Everything is stylized: chunky low-poly scenery, soft fog and toon-shaded characters. You play a party of four.
 
-- **A database** (`db`) shared by the page and the agent. The page writes my notes, verdicts and round submissions. The agent reads them with its data tool and writes its replies into the same documents.
-- **User identity** (`user`) records who wrote a note and whether a viewer may write.
-- **Asset uploads** (`assets`) let me add a screenshot or clip from my own play session (the page caps an upload at 20 MB) and mark it up like any other shot.
+[![Portraits of the four heroines](/assets/images/review-is-all-you-need/party.webp)](/assets/images/review-is-all-you-need/party.webp)
+*Jojio (sword and shield), Ysolde (greatsword), Seren (spear) and Setsuna (twin katanas).*
 
-Republishing to the same URL replaces the page and its media, but the database stays. So the page and the media can be replaced at any time, while the conversation on it is kept.
+### Explore, and gather friends
 
-The loop has four steps:
+The structure is the Zelda kind: you explore, and the world opens up as you go. Every region starts under a fog of war, and you chart it by finding its altar, usually on the highest peak around, and attuning it. Waystones along the roads are where you pray, heal and get back up after a defeat. Trials and chests are tucked away everywhere. Friends join along the way. Chapter two, which the agent is building while I write this, has each of the three companions join during an act set in her homeland.
 
-1. **Build and capture.** The agent changes builders and regenerates. Then it records scripted clips in Play mode at a fixed 1/30 s step with an offline audio mix, and takes edit-mode stills from JSON shot lists.
-2. **Publish.** It encodes the media, extends the round's manifest and publishes the page (the limits are covered below).
-3. **Review.** I go through the reel, mark up shots, set a verdict per shot, press *Submit round*, and type "done" in the chat.
-4. **Fix and reply.** The agent reads every note, fixes it, and replies on the note with what changed and the round that ships it, then sets the note to *fixed*. The next round shows the new version of each shot next to the old one.
+### Tag combos and shield breaks
 
-[![The review page: a reel of shots on the left, a still of Kagetsu Keep with four numbered pins in the middle, the notes with the agent's replies on the right](/assets/images/review-is-all-you-need/review-page-pins.webp)](/assets/images/review-is-all-you-need/review-page-pins.webp)
-*The review page, which the agent wrote for round 1 and has extended since. The reel is on the left, the screen and mark-up tools in the middle, and the notes sheet on the right. Four pins on round 5's Kagetsu Keep each mark a separate problem, and each one has the agent's reply from round 6.*
+Combat takes after Tower of Fantasy. You swap heroines with the number keys almost any time, even in the middle of a combo. Hits charge the heroines waiting on the bench, and swapping in one who is fully charged fires her Resonance Art, a short cinematic attack with its own camera. Swap in another charged heroine within a few seconds and her Art chains off the last one for extra damage. Round 12 adds shields. Bosses and elites raise a poise shield that soaks most of the damage until you wear it down, and breaking it leaves the enemy staggered and taking double damage for six seconds.
 
-The page is one file of about 80 KB (HTML, CSS and JavaScript, no build step). Its own code calls it "a screening room for dailies". Reviewing is mostly keyboard: `P`, `B`, `D` and `V` pick pin, box, draw and select; `G` and `N` mark a shot good or needing work; `[` and `]` move between shots; `Space` plays; `,` and `.` step one frame. Filters show unreviewed shots, shots with notes, or shots that need work, by round. Speed matters here because I am the slowest part of the loop.
+### Simple, classic gear
 
-### Feedback an agent can act on
+Gear is deliberately old-school. Every weapon type comes in five rarities, relics come in sets with 2- and 4-piece bonuses, and you can enhance with gold and ore or salvage what you don't need. Loot drops with a beam of light in its rarity color, so you can spot a Legendary from across a field.
 
-This is a real note from round 3, as the agent reads it from the database:
+### No generated assets
+
+There's no generated art anywhere in the game. Everything comes from packs bought on the Unity Asset Store: Synty's POLYGON series for the world, the CombatGirls pack for the heroines, Kevin Iglesias animations, Epic Toon FX, plus a few music and sound libraries. Generated 3D assets don't come close to my standard yet, and they'd still need an artist's touch. So I ran the experiment as if my art team had already handed over everything I needed. The library sits on an external drive (267 packages, about 323,000 assets, 165 GB). Opus indexed it with a small command-line tool and pulled in single prefabs with their dependencies instead of whole packs, which keeps the project itself at 3.8 GB.
+
+### I never touched Unity
+
+All I did was direct, and review the reports Claude published. I didn't open Unity once. Claude drove the editor through the Unity CLI with scripts it wrote for itself, and it kept a runbook of its own commands so each new session started from things that already worked.
+
+### Where it is now
+
+This is the game after about 65 hours of agent work and ten rounds of my feedback. The clips are from round 11.
+
+<div class="yt-grid">
+{% include youtube.html id="xORHgJ6lyis" poster="/assets/images/review-is-all-you-need/yt-1-flight.webp" alt="A slow flight over the island" caption='A flight over four places: Gale Knoll&#39;s altar, the Drowned Ziggurat, the Crown Observatory and Watch Hill&#39;s ruined fort.' %}
+{% include youtube.html id="JkgJEcWlgsM" poster="/assets/images/review-is-all-you-need/yt-2-party.webp" alt="Swapping heroines and a chain of Resonance Arts" caption='Swapping heroines on the run, then a full bench chaining Resonance Arts.' %}
+{% include youtube.html id="MPhd_QrG86g" poster="/assets/images/review-is-all-you-need/yt-3-fights.webp" alt="Storming a skeleton fort" caption='Breaking into a skeleton fort, then Malgrath&#39;s second phase.' %}
+{% include youtube.html id="HUcGaoeGmYM" poster="/assets/images/review-is-all-you-need/yt-4-puzzles.webp" alt="A brazier trial solved" caption='Two trials: four braziers against the clock, then a line of glide rings.' %}
+{% include youtube.html id="VSPk0foFVIA" poster="/assets/images/review-is-all-you-need/yt-5-unlocks.webp" alt="Attuning an altar" caption='Attuning an altar charts its region on the map. Then a Precious and a Luxurious chest.' %}
+{% include youtube.html id="fRma3RYClaI" poster="/assets/images/review-is-all-you-need/yt-6-revive.webp" alt="The defeat screen" caption='The party falls to Malgrath, and she gets up again in a waystone&#39;s light.' %}
+{% include youtube.html id="r2D6vn2cKs8" poster="/assets/images/review-is-all-you-need/yt-7-gear.webp" alt="A Legendary weapon dropping with its beam" caption='A Legendary drop with its beam and banner, then the bag and the paper doll.' %}
+</div>
+
+## Review is really all you need
+
+When a model can see and place things this well, the bottleneck moves to me: how fast I can review, and how precisely I can say what's wrong. So on day one I told Claude how I wanted to review. I wanted real screen captures and videos of its work, and I wanted to draw on them. Drop a pin, drag a box, circle something on a frame, type one sentence, and have that reach the agent.
+
+It built exactly that.
+
+[![The review page: a reel of shots, a still of Kagetsu Keep with four numbered pins, and the notes with the agent's replies](/assets/images/review-is-all-you-need/review-page-pins.webp)](/assets/images/review-is-all-you-need/review-page-pins.webp)
+*The review page. Shots on the left, the frame and mark-up tools in the middle, notes on the right. Each of the four pins on round 5's Kagetsu Keep is its own problem, and each has the agent's reply from round 6.*
+
+Reviewing is mostly keyboard. `P`, `B`, `D` and `V` switch between pin, box, draw and select, `G` and `N` mark a shot good or needing work, `[` and `]` move between shots, and `,` and `.` step a single frame. Filters show what I haven't reviewed yet, by round. I'm the slowest part of the loop, so anything that makes me faster pays off every round.
+
+### What a note looks like to the agent
+
+A note is small. This one is real, from round 3:
 
 ```json
 {
@@ -73,112 +99,70 @@ This is a real note from round 3, as the agent reads it from the database:
 }
 ```
 
-[![The HUD clip paused at 00:11.14 with a pin on the left flask, and the same note with the agent's full reply](/assets/images/review-is-all-you-need/review-hud-note.webp)](/assets/images/review-is-all-you-need/review-hud-note.webp)
-*The same note on the page. The timecode reads seconds and frames (11.474 s is 00:11.14 at 30 fps). The reply in full: the flasks shrank to under half their size, moved against the ends of the action bar, and the whole bar went from 52% to 41% of the screen width.*
+It names the shot and its round, the time in the clip to the frame, the mark in coordinates relative to the frame, a severity (must fix, should fix or polish), a category and one sentence. The pin and the timestamp already say where and when, so the sentence can be short and sloppy. Mine were.
 
-Every field is there for a reason:
+[![The HUD clip paused at 00:11.14 with a pin on the left flask, and the note with the agent's reply](/assets/images/review-is-all-you-need/review-hud-note.webp)](/assets/images/review-is-all-you-need/review-hud-note.webp)
+*The same note on the page. The reply: the flasks shrank to under half their size and moved to the ends of the action bar, and the bar went from 52% to 41% of the screen width.*
 
-- **`media`** is the shot id plus its round, so there is never any doubt about which version a note refers to.
-- **`t`** is the time in the clip, to the frame. On video, a mark only shows within 0.6 s of its timestamp, so it stays on the frame it is about.
-- **`x`, `y`** are normalized to the frame, so they work at any player size. Boxes add width and height, and pen strokes add their points.
-- **`severity`** (must fix, should fix, polish) tells the agent how to triage.
-- **`category`** comes from a list per area. World shots use World layout, Terrain, Art & dressing, Places, Gameplay, Quests & dialogue, UI & HUD, Audio, Camera, Performance and Bug. Character shots use Animation, Ability & timing, Hit feel, VFX & audio, Character art, Camera and Bug.
-- **`text`** can be short and sloppy, because the pin and the timestamp already say *where* and *when*. The words only need to say *what*.
-
-[![A clip paused at 00:05.25 with a pin on a skeleton's sword, next to a panel of attack numbers and a timing bar](/assets/images/review-is-all-you-need/soldier-numbers.webp)](/assets/images/review-is-all-you-need/soldier-numbers.webp)
-*A pin on a clip at 5.25 s; the red tick further along the timeline is the clip's other note. The agent puts numbers next to character clips (damage, reach, and the hit, next-input and cancel windows as a bar), so I review against the intended values and not only the picture.*
-
-On the agent's side, a pin becomes a picture it can look at. A small tool, `frameat`, extracts the exact frame. Another, `pin_crop`, draws a ring at the pin and writes a 2× crop around it:
+On its side, the agent turns a pin into a picture it can look at. One small tool pulls the exact frame out of the clip, and another draws a ring at the pin and writes a 2× crop next to it.
 
 [![The frame at 5.836 s with a red ring on the skeleton's helmet, and a 2x crop around it](/assets/images/review-is-all-you-need/agent-view.webp)](/assets/images/review-is-all-you-need/agent-view.webp)
-*"In attack 3, the sword is going through the character's body", as the agent sees it. Its reply in round 6: measured on the rigs, the wind-up ran the blade 17 to 36 cm into the helmet. Attack 3 became a different clip from the same pack that keeps the blade at least 6 cm from the head and body, and the change went to all three skeleton types.*
+*"In attack 3, the sword is going through the character's body", as the agent sees it. Its fix in round 6: it measured the blade going 17 to 36 cm into the helmet, swapped attack 3 for another clip from the same pack that keeps 6 cm clear, and applied that to all three skeleton types.*
 
-#### Video catches what stills can't
+### Video beats screenshots
 
-Stills show composition. Most of what makes a game feel wrong, though, happens over time:
+I didn't expect video to matter this much. Most of what makes a game feel wrong happens over time, and a still can't show it.
 
-- **Timing.** "This attack (attack 3) seems to be cancelled by another attack when it shouldn't" is pinned at 7.2 s of a clip. No single frame can show an attack being cancelled. The agent found two causes. It had cut the attack at 74% of its strike to skip a long settle. And in the clip the next attack started at a fixed time, while the recorder was playing every clip at half speed, so attack 3 ran into it. That is how we learned the footage itself was wrong.
-- **Camera.** "Let's not transition the camera angle on this interaction" is pinned at 11.7 s of the waystone prayer. The note became a rule for the whole project: no interaction moves the camera.
-- **Sound.** One note said the audio in every recording stuttered. The cause was the recorder, not the game. Unity's offline `AudioRenderer` only mixes whole 1024-sample blocks, and the recorder asked for 1600 samples per frame, so every frame ended with 12 ms of silence and sounds ran 1.56× too long. Every clip with sound was recorded again.
+One note said attack 3 "seems to be cancelled by another attack when it shouldn't". No single frame shows an attack getting cut short. The agent found two causes: it had trimmed the attack at 74% of its swing, and the recorder itself was playing every clip at half speed.
 
-[![A clip of a skeleton knight's attacks with two timestamped notes, one asking "what are those slow down in attack sequence? did we added it in ourselves?" and the agent's reply "Yes, partly our own doing"](/assets/images/review-is-all-you-need/review-timing-note.webp)](/assets/images/review-is-all-you-need/review-timing-note.webp)
-*Timing notes on a clip. Asked "did we add it ourselves?", the agent answered "Yes, partly our own doing" and explained both causes.*
+[![Two timestamped notes on a skeleton knight's attacks, one asking whether the slowdown was added on purpose, with the agent's reply](/assets/images/review-is-all-you-need/review-timing-note.webp)](/assets/images/review-is-all-you-need/review-timing-note.webp)
+*Timing notes on a clip. I asked whether we'd added the slowdown ourselves, and the agent answered "Yes, partly our own doing" and explained both causes.*
 
-{% include youtube.html id="bNjWCGlLiBc" start="4" poster="/assets/images/review-is-all-you-need/yt-knight.webp" alt="The skeleton knight's attacks in round 6 and round 7, side by side" caption='The note and its fix: round 6 (left) and round 7 (right), side by side and in sync. Round 6 was recorded at half speed, and attack 3 is cut short by the next swing.' %}
+{% include youtube.html id="bNjWCGlLiBc" start="4" poster="/assets/images/review-is-all-you-need/yt-knight.webp" alt="The skeleton knight's attacks in round 6 and round 7, side by side" caption='The note and its fix, side by side and in sync: round 6 on the left, round 7 on the right.' %}
 
-[![The waystone prayer clip with a pin at 00:11.20 on the heroine, and the note "Let's not transition the camera angle on this interaction"](/assets/images/review-is-all-you-need/review-video-note.webp)](/assets/images/review-is-all-you-need/review-video-note.webp)
-*A camera note on a video timestamp. The "Look at:" text on the right is the agent describing what the clip should show, so I check its claims instead of guessing what changed.*
+Another note, pinned at 11.7 s of the waystone prayer, just said "Let's not transition the camera angle on this interaction." That one became a rule for the whole project: no interaction moves the camera. And one note said the audio in every recording stuttered. It turned out to be the recorder, not the game. Unity's offline audio renderer only mixes whole blocks of 1,024 samples, and the recorder asked for 1,600 per frame, so every frame ended in 12 ms of silence. Every clip with sound was recorded again.
 
-The same prayer before and after the fix, with sound on:
+[![The waystone prayer clip paused at 00:11.20 with a pin on the heroine and the note about the camera angle](/assets/images/review-is-all-you-need/review-video-note.webp)](/assets/images/review-is-all-you-need/review-video-note.webp)
+*A camera note on a video timestamp. The "Look at" text on the right is the agent's description of what the clip should show, so I'm checking its claims instead of guessing what changed.*
 
-{% include youtube.html id="bNjWCGlLiBc" start="23" poster="/assets/images/review-is-all-you-need/yt-waystone.webp" alt="The waystone prayer in round 10" caption='Round 10, then round 11. In round 10 the camera cuts to her side and the sound stutters (the recorder&#39;s 12 ms holes); in round 11 the camera stays where she walked in and the sound is clean.' %}
+{% include youtube.html id="bNjWCGlLiBc" start="23" poster="/assets/images/review-is-all-you-need/yt-waystone.webp" alt="The waystone prayer in round 10" caption='Round 10, then round 11, with sound. In round 10 the camera cuts to her side and the audio stutters. In round 11 the camera stays put and the sound is clean.' %}
 
-In round 11, 16 of the 19 notes are pinned to a video timestamp.
+### Stills for layout
 
-#### Stills for space
-
-Stills are still the right tool for layout. On Kagetsu Keep I put four pins on one still for four problems: foundations too narrow, houses sunk into the ground, and rocks running into buildings in two places. The fixes were general, not local. Every building on uneven ground now gets the ground levelled under it (or is left out where the slope is too steep), and scattered rocks, cliff pieces and trees keep out of every building's footprint at every place. The agent's check over all 516 structures at the 38 places found nothing touching a building.
+Stills are still the right tool for where things are. On one still of Kagetsu Keep I put four pins: foundations too narrow, houses sunk into the ground, and rocks running into buildings in two places. The fixes went beyond that one place. Buildings on uneven ground now get the ground leveled under them, and rocks, cliffs and trees stay out of every building's footprint everywhere. The agent then checked all 516 structures on the island and found nothing touching a building.
 
 [![Kagetsu Keep in round 5 and round 6 from the same camera](/assets/images/review-is-all-you-need/kagetsu-r5-r6.webp)](/assets/images/review-is-all-you-need/kagetsu-r5-r6.webp)
-*The same camera in round 5 and round 6. Stills are taken from recorded camera poses, so an after shot repeats its before shot exactly.*
+*Round 5 and round 6 from the same camera. Stills are shot from recorded camera poses, so an after shot repeats its before shot exactly.*
 
-#### The agent's side of the deal
+### The agent's half
 
-A note only works if both sides do their part. Four things on the page come from the agent:
+A pin only helps if the agent meets it halfway, and it did. Every shot comes with a "Look at" line saying what changed and what to check. Character clips come with their numbers (damage, reach, and the hit, input and cancel windows drawn as a bar), so I can judge feel against intent. Compare buttons jump to the same shot in earlier and later rounds. Every note gets a reply that names the round with the fix, and when the bug was the agent's own doing, the reply says so.
 
-- **A "Look at:" line on every shot**, saying what changed and what to check.
-- **Numbers next to clips**, such as damage, timing windows, reach and frame cost, so feel can be compared with intent.
-- **Compare buttons** that jump to a shot's earlier and later versions, with earlier notes and replies shown on the shot.
-- **A reply on every note**, naming the round that fixes it, and saying so when the problem was the agent's own doing.
+[![A clip paused at 00:05.25 with a pin on a skeleton's sword, beside a panel of attack numbers and a timing bar](/assets/images/review-is-all-you-need/soldier-numbers.webp)](/assets/images/review-is-all-you-need/soldier-numbers.webp)
+*A pinned clip next to the numbers the agent attaches to character clips.*
 
-#### The footage has to be trustworthy
+The footage has to be honest, too. Three of the bugs review caught were in the recordings rather than the game: clips running at half speed until round 7, timers running about 7× fast during capture in round 8, and the audio holes. Scripted clips also count every time a step had to cheat with a direct API call because the player's own move didn't land, so a take like that gets recorded again or flagged. Footage that lies is worse than no footage.
 
-A review is only as good as its footage, and three of the problems review caught were in the footage, not the game. Until round 7, clips played at about half speed. In round 8, timers ran about 7× fast during capture, because code read the wall clock while the recorder stepped time at 1/30 s; all such code now reads a capture-aware `RealTime` clock. Then came the audio holes. Scripted clips also log a "fallback" whenever a step needed a direct API call because the player's own move didn't land. The fallback count is printed with every take, so a take that cheated gets recorded again or captioned. Footage that lies is worse than no footage.
+## Artifacts are what made it work
 
-### Working within the size limits
+The review pages are Claude artifacts: web pages Claude publishes to claude.ai, private by default, at a fixed URL. Three things the page can use turn it from a gallery into a review tool. There's a small database the page and the agent share, so my notes, verdicts and round submissions land there, and the agent reads them and writes its replies into the same records. The page knows who's viewing. And I can upload my own screenshot or clip from a play session and mark it up like any other shot. Republishing replaces the page and its media but keeps the database, so the notes survive every round.
 
-Artifacts have limits, and a game review produces a lot of video:
+It also means I can review from anywhere. I go through a round on another computer while the workstation keeps working through the feedback and the feature backlog. When I'm done, I press Submit, type "done" in the chat, and the agent picks the notes up, fixes them, replies on each one and records the next round.
 
-| Limit | Value |
-| --- | --- |
-| Per file | 16 MB |
-| Per publish | 64 MB and 255 files, server-side copies included |
-| Per page version | 256 MB and 511 files |
+### Fitting a game's worth of video
 
-Round 11 alone added about 650 MB: 59 clips and over 400 stills. This is how it fits:
+Artifacts have limits: 16 MB per file, 64 MB and 255 files per publish (server-side copies count too), and 256 MB per page. Round 11 alone was about 650 MB of new clips and stills. A few habits made it fit without lowering quality, which was my rule after round 10:
 
-1. **Encode for review, not for archiving.** Clips are H.264 + AAC, 1280 pixels wide, 30 fps, 3 Mbps. Only a clip that would pass 15.5 MB gets a lower bitrate (a 60 s clip needs about 1.8 Mbps). Posters are 1280 wide and thumbnails 320, so the reel appears instantly. The media script warns about any file near the limit.
-2. **Split pages, don't cut quality.** After round 10 I set a rule: never lower quality or cut clips to fit a page, start another page instead. Round 11 is five linked pages, split by subject: the world, trials and chests, party and items, sound/HUD/quests, and the boss.
-3. **One page template, data in a manifest.** Every review page is the same HTML with a different `<title>`. The shots, rounds, earlier notes and cross-links live in `media.json`. Each round's build script extends the previous manifest and never drops earlier media or notes.
-4. **Publish in batches to the same URL.** The first batch is the page, `media.json`, thumbnails, posters and stills, so the page is usable right away. Videos follow in batches of at most 60 MB and 250 files. Files left out of a publish stay on the page.
-5. **Copy instead of re-uploading.** When a shot is redone, its earlier version is copied on the server from the older page (`{artifact, path}`), so the compare buttons work on the new page. The catch is that copies count toward the 64 MB of a publish: one page had 93 MB of copies and they had to be split across publishes.
-6. **Carry history forward.** A new page's manifest carries every earlier note and reply as read-only history, so the full record is on the newest page.
-7. **Link the set last.** The pages are published with placeholder links. Once their URLs exist, the manifests are rebuilt and only `media.json` and the index are published again.
-8. **Check mechanically before publishing.** A one-minute script confirms the files exist, the sizes and batches are within limits, the server copies are present and the manifests reference only published paths.
+- Clips are H.264 with AAC at 1280 wide and 3 Mbps. Only a clip that would pass 15.5 MB gets a lower bitrate, and the reel loads from small thumbnails and posters.
+- When a page fills up, the next round starts a new page. Round 11 alone is five linked pages, split by subject.
+- Every page is the same HTML. The shots, rounds and old notes live in a manifest that each round extends and never trims.
+- A page goes up in batches to the same URL: the page, manifest and stills first so it's usable at once, then the videos.
+- Earlier versions of redone shots are copied over on the server from the older page instead of re-uploaded, so the compare buttons keep working.
+- A one-minute script checks sizes, batches and references before anything is published.
 
-[![The rounds index: eight review pages with the rounds each holds and how many of their 256 MB they use](/assets/images/review-is-all-you-need/rounds-index.webp)](/assets/images/review-is-all-you-need/rounds-index.webp)
-*The rounds index lists every page and how full it is. Review I (rounds 1–3) holds about 232 MB, Review II (rounds 4–7) about 197 and Review III (rounds 8–10) about 205. Round 11's five parts hold 190, 157, 150, 215 and 92 MB.*
+[![The rounds index listing eight review pages with the rounds each holds and how much of its 256 MB it uses](/assets/images/review-is-all-you-need/rounds-index.webp)](/assets/images/review-is-all-you-need/rounds-index.webp)
+*The rounds index lists every page and how full it is.*
 
-### Managing assets
+All of it, media, manifests and the exported notes, also lives in git. That paid off when I moved to a new claude.ai account and the first two review pages wouldn't open from it anymore. Every note and reply survived, because each later page carries them forward and the exports were in the repo.
 
-There are two kinds of assets to manage: the game's and the review's.
-
-**The game's assets.** No art was made from scratch. Everything comes from purchased packs on an external drive: 267 `.unitypackage` files holding 323,539 assets, 165 GB in all. A small Rust CLI, `uai`, indexes them for full-text search, follows dependencies across packages, exports an asset with its `.meta` files so GUIDs stay intact, extracts previews, and runs as an MCP server so the agent can use it directly. The agent pulls a single prefab with its dependencies instead of importing a whole pack, so the project's `Assets` folder is 3.8 GB and not the library's 165 GB. Before any building, I approved which pack would dress which biome. Review added more rules over time, for example "build every UI from the Synty interface prefabs" after round 2 rejected a custom HUD.
-
-The packs themselves stay untouched. Builders make copies and adapt them: they strip AudioSources from effect copies, move materials to URP and cap billboard sizes. The few patches to third-party code are documented. Builders keep asset GUIDs stable, so rebuilding a prefab never breaks the scenes that use it. Binaries go to Git LFS (about 9,900 files), and Unity's YAML stays text so it can be diffed.
-
-**The review's assets.** All of it is in the repo: each round's media in `Review/round<N>/`, one manifest per round, the build script that made it and the replies it sent. Stills are data too: each shot list records its cameras, so before and after shots repeat the same pose. The notes are exported to JSON in git, and that paid off. When I moved to a new claude.ai account, the first two review pages could no longer be opened from it. Their notes and replies survived because every later page carries them, and because the exports are in git.
-
-The agent also keeps a runbook (`CLAUDE.md`) up to date: builder order, commands, recording and still tools, and gotchas. Each new session starts from commands that already work.
-
-### What I'd copy
-
-- **Make the review page part of the product.** The agent wrote it once and keeps extending it, and every round fills it.
-- **Give each note a pin, a timestamp, a severity, a category and one sentence.** The pin says where, so the sentence can be short.
-- **Prefer video.** Timing, camera and sound only show up there.
-- **Ask the agent to say what to look at, and to answer every note** with the round that fixes it.
-- **Treat the capture pipeline as part of the game.** Test it like gameplay code.
-- **Split pages instead of cutting quality.** Publish in batches, copy instead of re-uploading, and carry history forward.
-- **Keep everything in git, including the notes.**
-
-In under five days the game went from a generated island to something you can play: glide across ten biomes, swap heroines in the middle of a fight, storm forts, solve trials, open chests, chart the map altar by altar and beat a two-phase boss. Every one of those features went through review more than once before it felt right. The scarce resource was never what the agent could build. It was my attention, and how precisely I could say what was wrong. Every hour spent making review faster and more exact paid off in every round after it.
+In five days the game went from a generated island to something you can play: glide over ten biomes, swap heroines in the middle of a fight, storm forts, solve trials, open chests, chart the map altar by altar and beat a two-phase boss. Each of those went through review more than once before it felt right. Opus did the building. My part was looking closely and saying precisely what was wrong, and every hour I spent making that faster paid off in every round after it.

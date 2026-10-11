@@ -39,3 +39,15 @@
   font-style: italic;
   line-height: 1.45;
 }
+
+// A grid of YouTube posters: two columns, one on phones.
+.yt-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px 14px;
+  margin: 0 0 20px;
+}
+.yt-grid .yt { margin: 0; min-width: 0; }
+@media (max-width: 600px) {
+  .yt-grid { grid-template-columns: minmax(0, 1fr); }
+}
