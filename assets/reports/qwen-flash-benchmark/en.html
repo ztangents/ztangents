@@ -1,0 +1,1279 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Qwen 3.8 Flash (three deployments) vs GPT-6.1 Sol vs GPT-6.1 Terra</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  /* Match report: the five setup colours carry all the data, everything else is ink on paper.
+     Layout: a reading column for prose, full-width panels for charts and screenshot sets.
+     In display order (Qwen IQ4, IQ3, NVFP4, Terra, Sol) the five pass the adjacent colour
+     checks in both modes, and all pairs in light mode. In dark mode IQ3 and Terra sit below
+     the all-pairs floor, so charts keep them apart (lanes, labels) and head-to-head results
+     are a text matrix rather than colour pairs. Aqua, red and yellow need relief on the light
+     surface, so every mark is also labelled. The abliterated IQ4 run is a neutral reference. */
+  --paper: #f2f3f5;
+  --surface: #fcfcfc;
+  --ink: #121417;
+  --ink-2: #4b5058;
+  --muted: #7d838b;
+  --rule: #e1e3e7;
+  --axis: #c3c7cd;
+  --qwen: #2a78d6;
+  --iq3: #1baf7a;
+  --nvfp4: #e34948;
+  --terra: #008300;
+  --sol: #eda100;
+  --on-sol: #0b0b0b;
+  --abl: #7d838b;
+  --ref: #9aa0a8;
+  --both: #59606a;
+  --on-both: #ffffff;
+  /* Latin glyphs come from Barlow/Plex, Chinese from Noto Sans SC where the page loads it. */
+  --display: "Barlow Condensed", "Noto Sans SC", "PingFang SC", "Microsoft YaHei", "Arial Narrow", sans-serif;
+  --body: "IBM Plex Sans", "Noto Sans SC", "PingFang SC", "Microsoft YaHei", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, "Noto Sans SC", monospace;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper: #0d0e10;
+    --surface: #17191c;
+    --ink: #eef0f3;
+    --ink-2: #c1c6cc;
+    --muted: #8a9098;
+    --rule: #272a2f;
+    --axis: #3b3f45;
+    --qwen: #3987e5;
+    --iq3: #199e70;
+    --nvfp4: #e66767;
+    --terra: #008300;
+    --sol: #c98500;
+    --on-sol: #ffffff;
+    --abl: #8a9098;
+    --ref: #7f868e;
+    --both: #a9b0b8;
+    --on-both: #121417;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --paper: #0d0e10;
+  --surface: #17191c;
+  --ink: #eef0f3;
+  --ink-2: #c1c6cc;
+  --muted: #8a9098;
+  --rule: #272a2f;
+  --axis: #3b3f45;
+  --qwen: #3987e5;
+  --iq3: #199e70;
+  --nvfp4: #e66767;
+  --terra: #008300;
+  --sol: #c98500;
+  --on-sol: #ffffff;
+  --abl: #8a9098;
+  --ref: #7f868e;
+  --both: #a9b0b8;
+  --on-both: #121417;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body { margin: 0; background: var(--paper); color: var(--ink); font: 400 16px/1.6 var(--body); }
+:lang(zh) body { line-height: 1.75; }
+a { color: inherit; text-underline-offset: 3px; }
+:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+.wrap { max-width: 1080px; margin: 0 auto; padding: 0 24px; }
+.prose { max-width: 68ch; }
+:lang(zh) .prose { max-width: 42em; }
+.prose p { margin: 0 0 14px; }
+h1, h2 { font-family: var(--display); font-weight: 700; text-transform: uppercase; text-wrap: balance; margin: 0; }
+h1 { font-size: clamp(2.4rem, 6.4vw, 4.2rem); line-height: 0.95; letter-spacing: 0.005em; }
+:lang(zh) h1 { line-height: 1.06; }
+h2 { font-size: 2.2rem; line-height: 1; }
+:lang(zh) h2 { font-size: 2.1rem; line-height: 1.15; }
+h3 { font-size: 1rem; font-weight: 600; margin: 0; text-wrap: balance; }
+.eyebrow { font: 500 12.5px/1.45 var(--mono); letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-2); margin: 0 0 10px; }
+.small { font-size: 13.5px; color: var(--ink-2); }
+code, .mono { font-family: var(--mono); font-size: 0.92em; }
+
+header.top { padding: 48px 0 28px; }
+header.top .lede { font-size: 1.15rem; line-height: 1.55; max-width: 62ch; margin: 18px 0 0; }
+:lang(zh) header.top .lede { font-size: 1.12rem; line-height: 1.7; max-width: 40em; }
+.vs { color: var(--ink-2); }
+.nb { white-space: nowrap; }
+
+.board { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+.card { background: var(--surface); border: 1px solid var(--rule); border-radius: 6px; padding: 18px 20px; }
+.score { display: grid; grid-template-columns: 1fr auto; align-items: baseline; gap: 4px 16px; padding: 8px 0; border-bottom: 1px solid var(--rule); }
+.score .who { display: flex; align-items: center; gap: 8px; font-weight: 500; }
+.score .who small { display: block; font-size: 13px; font-weight: 400; color: var(--ink-2); }
+.score .num { font: 600 2.1rem/1 var(--body); font-variant-numeric: tabular-nums; }
+.score .num small { font-size: 0.9rem; font-weight: 500; color: var(--ink-2); margin-left: 6px; }
+.card .verdict { margin: 12px 0 0; font-size: 14.5px; color: var(--ink-2); }
+.card .verdict b { color: var(--ink); font-weight: 600; }
+
+.key { display: inline-block; width: 10px; height: 10px; border-radius: 50%; flex: none; vertical-align: 0; }
+.key.q { background: var(--qwen); }
+.key.i { background: var(--iq3); }
+.key.n { background: var(--nvfp4); }
+.key.a { background: var(--abl); }
+.key.s { background: var(--sol); }
+.key.t { background: var(--terra); }
+.key.r { background: var(--ref); }
+.key.sq { border-radius: 3px; }
+.key.both { background: var(--both); }
+.key.none { background: var(--rule); box-shadow: inset 0 0 0 1px var(--axis); }
+.key.line { width: 16px; height: 2px; border-radius: 1px; }
+.key.hollow { background: transparent; box-shadow: inset 0 0 0 1.5px var(--ink-2); border-radius: 2px; }
+
+section.part { padding: 56px 0 8px; }
+section.part > .wrap > header { display: grid; gap: 4px; margin-bottom: 18px; }
+.stack { display: grid; gap: 16px; }
+
+.panel { background: var(--surface); border: 1px solid var(--rule); border-radius: 6px; padding: 18px 20px 16px; }
+.panel > header { display: grid; gap: 2px; margin-bottom: 12px; }
+.panel .cap { font-size: 13.5px; color: var(--ink-2); margin: 10px 0 0; max-width: 72ch; }
+:lang(zh) .panel .cap { max-width: 46em; }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 18px; font-size: 13.5px; color: var(--ink-2); margin: 0 0 10px; padding: 0; list-style: none; }
+.legend li { display: flex; align-items: center; gap: 7px; }
+.chart { width: 100%; min-height: 40px; }
+.chart svg { display: block; overflow: visible; }
+
+.setup { width: 100%; border-collapse: collapse; font-size: 15px; }
+.setup th, .setup td { text-align: left; vertical-align: top; padding: 10px 12px; border-bottom: 1px solid var(--rule); }
+.setup thead th { font: 500 12.5px var(--mono); text-transform: uppercase; letter-spacing: 0.05em; color: var(--ink-2); border-bottom-color: var(--axis); }
+.setup tbody th { font-weight: 500; color: var(--ink-2); width: 19%; }
+.setup th span { display: inline-flex; align-items: center; gap: 7px; }
+
+/* Head-to-head matrix: row setup against column setup, as text. */
+table.h2h-matrix { border-collapse: separate; border-spacing: 2px; font-size: 13.5px; min-width: 520px; }
+table.h2h-matrix th { font: 500 12.5px var(--body); color: var(--ink-2); padding: 6px 8px; text-align: left; white-space: nowrap; }
+table.h2h-matrix thead th { text-align: center; }
+table.h2h-matrix th span { display: inline-flex; align-items: center; gap: 6px; }
+table.h2h-matrix td { background: var(--paper); border-radius: 4px; padding: 7px 8px; text-align: center; font-variant-numeric: tabular-nums; line-height: 1.3; }
+table.h2h-matrix td b { display: block; font-weight: 500; font-size: 14.5px; }
+table.h2h-matrix td small { color: var(--muted); font-size: 11.5px; }
+table.h2h-matrix td.self { background: transparent; color: var(--muted); }
+table.h2h-matrix td.clear b { font-weight: 700; }
+table.h2h-matrix td.clear { box-shadow: inset 0 0 0 1.5px var(--axis); }
+
+/* Task grid: each cell carries one pip per setup, filled when that setup passed. */
+.cells { display: grid; grid-template-columns: repeat(auto-fill, minmax(72px, 1fr)); gap: 3px; }
+.cell { position: relative; height: 44px; border-radius: 4px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; background: var(--paper); font: 500 12px/1 var(--mono); color: var(--ink-2); font-variant-numeric: tabular-nums; }
+.cell.to::after, .notch::after { content: ""; position: absolute; top: 0; right: 0; border-style: solid; border-width: 0 10px 10px 0; border-color: transparent var(--surface) transparent transparent; }
+.notch { position: relative; display: inline-block; width: 18px; height: 14px; border-radius: 3px; background: var(--paper); box-shadow: inset 0 0 0 1px var(--axis); }
+.pips { display: flex; gap: 3px; }
+.pip { width: 10px; height: 10px; border-radius: 2px; box-shadow: inset 0 0 0 1.5px var(--c); }
+.pip.on { background: var(--c); }
+.pip.q { --c: var(--qwen); }
+.pip.i { --c: var(--iq3); }
+.pip.n { --c: var(--nvfp4); }
+.pip.s { --c: var(--sol); }
+.pip.t { --c: var(--terra); }
+
+.stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 12px; }
+.stat { background: var(--surface); border: 1px solid var(--rule); border-radius: 6px; padding: 14px 16px; display: grid; gap: 4px; align-content: start; }
+.stat .v { font: 600 1.3rem/1.25 var(--body); display: flex; flex-wrap: wrap; align-items: center; gap: 4px 14px; font-variant-numeric: tabular-nums; }
+.stat .v span { display: inline-flex; align-items: center; gap: 7px; }
+.stat .l { font-size: 13.5px; color: var(--ink-2); }
+
+.duo { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; align-items: start; }
+
+.example { display: grid; gap: 10px; }
+.example + .example { margin-top: 26px; padding-top: 22px; border-top: 1px solid var(--rule); }
+.example header { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 12px; }
+.example header .small { font-family: var(--mono); font-size: 12.5px; }
+.trio { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.trio .noimg { aspect-ratio: 16 / 9; display: flex; align-items: center; justify-content: center; padding: 0 16px; text-align: center; background: var(--paper); color: var(--ink-2); font-size: 14px; }
+.trio figure { margin: 0; border: 1px solid var(--rule); border-radius: 6px; overflow: hidden; background: var(--surface); }
+.trio img { display: block; width: 100%; height: auto; aspect-ratio: 16 / 9; object-fit: cover; object-position: top; }
+.trio figcaption { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 8px 12px; font-size: 14px; border-top: 1px solid var(--rule); }
+.trio figcaption span { display: inline-flex; align-items: center; gap: 7px; }
+.trio figcaption b { font-weight: 600; font-size: 1.05rem; font-variant-numeric: tabular-nums; }
+.example p { margin: 0; max-width: 80ch; font-size: 15px; }
+:lang(zh) .example p { max-width: 50em; }
+
+.table-wrap { overflow-x: auto; }
+table.data { border-collapse: collapse; width: 100%; font-size: 14px; min-width: 680px; }
+table.data th { text-align: left; font: 500 12px var(--mono); text-transform: uppercase; letter-spacing: 0.05em; color: var(--ink-2); padding: 8px 10px; border-bottom: 1px solid var(--axis); white-space: nowrap; }
+table.data th.n { text-align: right; }
+table.data th span { display: inline-flex; align-items: center; gap: 6px; }
+table.data td { padding: 7px 10px; border-bottom: 1px solid var(--rule); vertical-align: middle; }
+table.data .n { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+table.data .id { font-family: var(--mono); font-size: 12.5px; color: var(--ink-2); font-variant-numeric: tabular-nums; }
+table.data .note { font-size: 13px; color: var(--ink-2); }
+table.data .fail { color: var(--ink-2); }
+table.data .best { font-weight: 600; }
+table.data .strip svg { display: block; }
+
+details.more summary { cursor: pointer; font-weight: 600; font-size: 15px; }
+details.more summary span { font-weight: 400; color: var(--ink-2); font-size: 13.5px; margin-left: 8px; }
+details.more[open] summary { margin-bottom: 12px; }
+
+ul.notes { margin: 0; padding-left: 20px; display: grid; gap: 10px; max-width: 76ch; }
+:lang(zh) ul.notes { max-width: 48em; }
+footer { padding: 48px 0 56px; font-size: 13.5px; color: var(--ink-2); }
+
+#tip { position: fixed; z-index: 10; pointer-events: none; background: var(--ink); color: var(--paper); padding: 8px 10px; border-radius: 6px; font-size: 13px; line-height: 1.5; max-width: 300px; box-shadow: 0 6px 18px rgba(0, 0, 0, 0.2); }
+#tip strong { font-weight: 600; }
+#tip span { opacity: 0.75; }
+
+svg text { font-family: var(--body); font-size: 12px; }
+svg .tick { font-variant-numeric: tabular-nums; }
+svg .lab { font-size: 13.5px; font-weight: 500; }
+svg .val { font-size: 13px; font-weight: 600; font-variant-numeric: tabular-nums; }
+svg .sm { font-size: 12px; }
+svg .halo { paint-order: stroke; stroke: var(--surface); stroke-width: 4px; stroke-linejoin: round; }
+.t-ink { fill: var(--ink); }
+.t-2 { fill: var(--ink-2); }
+.t-mute { fill: var(--muted); }
+.grid-l { stroke: var(--rule); stroke-width: 1; }
+.axis-l { stroke: var(--axis); stroke-width: 1; }
+.link { stroke: var(--axis); stroke-width: 2; stroke-linecap: round; }
+.ci { stroke-width: 2; stroke-linecap: round; }
+.step { fill: none; stroke-width: 2; stroke-linejoin: round; }
+.cross { stroke: var(--ink-2); stroke-width: 1; stroke-dasharray: 3 3; }
+.s-qwen { stroke: var(--qwen); } .f-qwen { fill: var(--qwen); }
+.s-iq3 { stroke: var(--iq3); } .f-iq3 { fill: var(--iq3); }
+.s-nvfp4 { stroke: var(--nvfp4); } .f-nvfp4 { fill: var(--nvfp4); }
+.s-abl { stroke: var(--abl); } .f-abl { fill: var(--abl); }
+.s-sol { stroke: var(--sol); } .f-sol { fill: var(--sol); }
+.s-terra { stroke: var(--terra); } .f-terra { fill: var(--terra); }
+.s-ref { stroke: var(--ref); } .f-ref { fill: var(--ref); }
+.ring { stroke: var(--surface); stroke-width: 2; }
+.hit { fill: transparent; }
+
+@media (max-width: 760px) {
+  .board, .duo { grid-template-columns: 1fr; }
+  .trio { grid-template-columns: 1fr; }
+}
+@media (max-width: 480px) {
+  .wrap { padding: 0 16px; }
+  .panel, .card { padding: 14px 14px 12px; }
+  .score .num { font-size: 1.8rem; }
+}
+@media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto !important; } }
+
+/* The abliterated comparison has two short value columns; keep it compact. */
+.table-wrap.panel:has(> #t-abl) { max-width: 760px; }
+#t-abl td { font-variant-numeric: tabular-nums; }
+#t-abl tbody th { width: 44%; }
+
+</style>
+</head>
+<body>
+<div id="tip" role="tooltip" hidden></div>
+
+<header class="top">
+  <div class="wrap">
+    <p class="eyebrow">Benchmark report · 2 November 2026</p>
+    <h1><span class="nb">Qwen 3.8 Flash ×3</span> <span class="vs">vs</span> <span class="nb">GPT-6.1 Sol</span> <span class="vs">vs</span> <span class="nb">GPT-6.1 Terra</span></h1>
+    <p class="lede">Five coding-agent setups on Godot game-development tasks and creative web builds. Sol is the strongest overall. Terra, a different model in Sol's harness, matches Sol on Godot and is the fastest, but its creative pages score well below Sol's. Three Qwen 3.8 Flash deployments trail both on Godot and are level with each other there: IQ4_XS and IQ3_S on one 16 GB workstation GPU, and NVFP4 on two RTX 6000 Pro GPUs under SGLang. NVFP4 is three to seven times faster than the workstation builds, but its creative pages lose to both of them side by side.</p>
+  </div>
+</header>
+
+<main>
+  <div class="wrap">
+    <div class="board">
+      <div class="card">
+        <p class="eyebrow">GameDevBench · Godot tasks passed</p>
+        <div class="score"><div class="who"><i class="key q"></i><div>Qwen IQ4<small>workstation, PI, medium</small></div></div><div class="num">48.3%<small>28 / 58</small></div></div>
+        <div class="score"><div class="who"><i class="key i"></i><div>Qwen IQ3<small>workstation, PI, medium</small></div></div><div class="num">51.7%<small>30 / 58</small></div></div>
+        <div class="score"><div class="who"><i class="key n"></i><div>Qwen NVFP4<small>2× RTX 6000 Pro, PI, medium</small></div></div><div class="num">44.8%<small>26 / 58</small></div></div>
+        <div class="score"><div class="who"><i class="key t"></i><div>Terra<small>Codex, xhigh</small></div></div><div class="num">62.1%<small>36 / 58</small></div></div>
+        <div class="score"><div class="who"><i class="key s"></i><div>Sol<small>Codex, xhigh</small></div></div><div class="num">65.5%<small>38 / 58</small></div></div>
+        <p class="verdict"><b>Sol and Terra lead</b> and are level with each other. The three Qwen builds are level with each other too.</p>
+      </div>
+      <div class="card">
+        <p class="eyebrow">ArtifactsBench · creative score out of 100</p>
+        <div class="score"><div class="who"><i class="key q"></i><div>Qwen IQ4<small>workstation, PI, medium</small></div></div><div class="num">60.6<small>mean of 40</small></div></div>
+        <div class="score"><div class="who"><i class="key i"></i><div>Qwen IQ3<small>workstation, PI, medium</small></div></div><div class="num">64.3<small>mean of 40</small></div></div>
+        <div class="score"><div class="who"><i class="key n"></i><div>Qwen NVFP4<small>2× RTX 6000 Pro, PI, medium</small></div></div><div class="num">57.6<small>mean of 40</small></div></div>
+        <div class="score"><div class="who"><i class="key t"></i><div>Terra<small>Codex, xhigh</small></div></div><div class="num">63.0<small>mean of 40</small></div></div>
+        <div class="score"><div class="who"><i class="key s"></i><div>Sol<small>Codex, xhigh</small></div></div><div class="num">76.6<small>mean of 40</small></div></div>
+        <p class="verdict"><b>Sol leads clearly</b> and has the best page on 34 of 40 tasks. The other four sit within 7 points of each other.</p>
+      </div>
+      <div class="card">
+        <p class="eyebrow">GameDevBench · median time per task</p>
+        <div class="score"><div class="who"><i class="key q"></i><div>Qwen IQ4<small>20 tasks hit the 600 s limit</small></div></div><div class="num">441<small>s</small></div></div>
+        <div class="score"><div class="who"><i class="key i"></i><div>Qwen IQ3<small>13 tasks hit the limit</small></div></div><div class="num">337<small>s</small></div></div>
+        <div class="score"><div class="who"><i class="key n"></i><div>Qwen NVFP4<small>11 tasks hit the limit</small></div></div><div class="num">125<small>s</small></div></div>
+        <div class="score"><div class="who"><i class="key t"></i><div>Terra<small>no timeouts</small></div></div><div class="num">44<small>s</small></div></div>
+        <div class="score"><div class="who"><i class="key s"></i><div>Sol<small>no timeouts</small></div></div><div class="num">104<small>s</small></div></div>
+        <p class="verdict"><b>Terra finished first on 45 of 58 tasks and NVFP4 on the other 13.</b> NVFP4 runs about 3 times faster than the workstation builds.</p>
+      </div>
+      <div class="card">
+        <p class="eyebrow">ArtifactsBench · median time per page</p>
+        <div class="score"><div class="who"><i class="key q"></i><div>Qwen IQ4<small>5 pages hit the 1,200 s limit</small></div></div><div class="num">378<small>s</small></div></div>
+        <div class="score"><div class="who"><i class="key i"></i><div>Qwen IQ3<small>2 pages hit the limit</small></div></div><div class="num">319<small>s</small></div></div>
+        <div class="score"><div class="who"><i class="key n"></i><div>Qwen NVFP4<small>2 pages hit the limit</small></div></div><div class="num">55<small>s</small></div></div>
+        <div class="score"><div class="who"><i class="key t"></i><div>Terra<small>no timeouts</small></div></div><div class="num">72<small>s</small></div></div>
+        <div class="score"><div class="who"><i class="key s"></i><div>Sol<small>no timeouts</small></div></div><div class="num">648<small>s</small></div></div>
+        <p class="verdict"><b>NVFP4 finished first on 25 of 40 pages and Terra on 15.</b> Sol takes the longest here and scores the highest.</p>
+      </div>
+    </div>
+  </div>
+
+  <section class="part" aria-labelledby="setup-h">
+    <div class="wrap">
+      <header>
+        <p class="eyebrow">What was compared</p>
+        <h2 id="setup-h">The five setups</h2>
+      </header>
+      <div class="prose"><p>Each side is a full stack: model, serving and agent harness together. The three Qwen setups are the same model under the same harness and settings; they differ in quantization, server and hardware. Sol and Terra share a harness and settings, so the difference between them is the model alone. All five ran in the same Ubuntu 24.04 arm64 VM, inside GameDevBench's strict sandbox. The agent sees a private home folder and the task folder, and its network reaches only its own model endpoint.</p></div>
+      <div class="table-wrap panel">
+        <table class="setup">
+          <thead><tr><th></th><th><span><i class="key q"></i>Qwen IQ4</span></th><th><span><i class="key i"></i>Qwen IQ3</span></th><th><span><i class="key n"></i>Qwen NVFP4</span></th><th><span><i class="key t"></i>Terra</span></th><th><span><i class="key s"></i>Sol</span></th></tr></thead>
+          <tbody>
+            <tr><th scope="row">Model</th><td><code>qwen3.8-flash-next</code>, Unsloth UD-IQ4_XS</td><td><code>qwen3.8-flash-next</code>, IQ3_S</td><td><code>qwen3.8-flash-next</code>, NVFP4</td><td><code>gpt-6.1-terra</code></td><td><code>gpt-6.1-sol</code></td></tr>
+            <tr><th scope="row">Served by</th><td>Strata on a local workstation, one request at a time, about 57 tokens/s decode</td><td>Same server, about 75 tokens/s decode</td><td>SGLang 0.5.23, split across both GPUs, with speculative decoding; about 150–250 tokens/s decode</td><td>OpenAI, through a ChatGPT login</td><td>OpenAI, through a ChatGPT login</td></tr>
+            <tr><th scope="row">Hardware</th><td>NVIDIA GeForce RTX 5070 Ti (16 GB), 128 GB DDR4-3200, AMD Ryzen 9 5950X</td><td>Same workstation</td><td>Two NVIDIA RTX 6000 Pro GPUs</td><td>OpenAI's servers, not disclosed</td><td>OpenAI's servers, not disclosed</td></tr>
+            <tr><th scope="row">Agent harness</th><td>PI 1.4.0, extensions, skills and MCP off</td><td>Same as IQ4</td><td>Same as IQ4</td><td>Codex CLI 0.166.0, web search and browser tools off</td><td>Same as Terra</td></tr>
+            <tr><th scope="row">Reasoning effort</th><td>medium</td><td>medium</td><td>medium</td><td>xhigh</td><td>xhigh</td></tr>
+            <tr><th scope="row">Tasks run at once</th><td>1</td><td>1</td><td>1</td><td>4 on GameDevBench, 2 on creative</td><td>Same as Terra</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="prose"><p class="small" style="margin-top:12px">An earlier IQ4_XS run used an abliterated build, one with its refusal behaviour removed. It is compared with the normal build in <a href="#abl-h">its own section</a> and appears as a grey reference row on the pass-rate chart.</p></div>
+    </div>
+  </section>
+
+  <section class="part" aria-labelledby="gdb-h">
+    <div class="wrap stack">
+      <header>
+        <p class="eyebrow">Godot 4.4.1 · 58 scored tasks · 600 s per task</p>
+        <h2 id="gdb-h">GameDevBench</h2>
+      </header>
+      <div class="prose">
+        <p>Each GameDevBench task hands the agent a Godot project and a change to make; an automated check then decides pass or fail. We ran a seeded sample of 60 of its 333 tasks with the leaderboard's settings: strict sandbox, runtime video on, no MCP, 600 seconds per task. Two sampled tasks are excluded because their reference solutions also fail in this VM, leaving 58.</p>
+      </div>
+
+      <div class="panel">
+        <header>
+          <h3>Pass rate with 95% interval</h3>
+          <p class="small">The grey rows are references: the abliterated IQ4 build, and the leaderboard's own published GPT 6 Astra run, both scored on the same 58 tasks.</p>
+        </header>
+        <div class="chart" id="c-intervals"></div>
+      </div>
+
+      <div class="panel">
+        <header>
+          <h3>Head to head on the same 58 tasks</h3>
+          <p class="small">Each cell reads row against column: tasks only the row setup solved, then tasks only the column setup solved. Outlined cells are statistically clear (exact McNemar test, p &lt; 0.05). Hover a cell for the full split.</p>
+        </header>
+        <div class="table-wrap"><table class="h2h-matrix" id="c-h2h-gdb"></table></div>
+        <p class="cap">Sol and Terra are clearly ahead of Qwen IQ4 and NVFP4; against IQ3 their lead is smaller and not clear. The three Qwen builds are level with each other, and so are Sol and Terra.</p>
+      </div>
+
+      <div class="panel">
+        <header>
+          <h3>Every task</h3>
+          <p class="small">Each cell shows Qwen IQ4, Qwen IQ3, Qwen NVFP4, Terra and Sol, left to right.</p>
+        </header>
+        <ul class="legend">
+          <li><span class="pips"><i class="pip q on"></i><i class="pip i on"></i><i class="pip n on"></i><i class="pip t on"></i><i class="pip s on"></i></span>Passed</li>
+          <li><span class="pips"><i class="pip q"></i><i class="pip i"></i><i class="pip n"></i><i class="pip t"></i><i class="pip s"></i></span>Failed</li>
+          <li><i class="notch" aria-hidden="true"></i>A Qwen build hit the 600 s limit</li>
+        </ul>
+        <div class="cells" id="c-cells"></div>
+        <p class="cap">Hover or focus a task for each setup's result and time. All five solved 15 tasks and none solved 15. The Qwen builds ran out of time on 20 (IQ4), 13 (IQ3) and 11 (NVFP4) tasks, and each still passed a few of them because the fix was in place before the cutoff. Sol and Terra never hit the limit.</p>
+      </div>
+
+      <div class="panel">
+        <header>
+          <h3>Qwen IQ4's effort check before the full run</h3>
+        </header>
+        <p class="small" style="margin:0 0 10px">On the first 8 sampled tasks the IQ4 build (the abliterated one, at the time) ran out of time on 6 and passed 3 at its highest setting. At medium it ran out of time on 2 and passed the same 3, so every Qwen run used medium.</p>
+        <div class="chart" id="c-effort"></div>
+      </div>
+
+      <div class="stats">
+        <div class="stat"><div class="v"><span><i class="key q"></i>20</span><span><i class="key i"></i>13</span><span><i class="key n"></i>11</span><span><i class="key t"></i>0</span><span><i class="key s"></i>0</span></div><div class="l">Tasks that hit the 600 s limit</div></div>
+        <div class="stat"><div class="v"><span><i class="key q"></i>441 s</span><span><i class="key i"></i>337 s</span><span><i class="key n"></i>125 s</span><span><i class="key t"></i>44 s</span><span><i class="key s"></i>104 s</span></div><div class="l">Median time per task</div></div>
+        <div class="stat"><div class="v"><span><i class="key q"></i>10.6k</span><span><i class="key i"></i>9.4k</span><span><i class="key n"></i>8.0k</span><span><i class="key t"></i>2.7k</span><span><i class="key s"></i>3.8k</span></div><div class="l">Median output tokens, on the 35 tasks no Qwen build ran out of time</div></div>
+        <div class="stat"><div class="v"><span><i class="key q"></i>57</span><span><i class="key i"></i>75</span><span><i class="key n"></i>150–250</span></div><div class="l">Qwen decode speed, tokens per second</div></div>
+      </div>
+      <div class="prose"><p class="small">The Qwen builds write two to four times as many tokens per task as Sol and Terra. On the workstation they decode at 57 to 75 tokens/s, so most of their extra time is generation; NVFP4 writes nearly as much but decodes several times faster. Terra writes the fewest tokens of all and gives up almost nothing to Sol for it.</p></div>
+    </div>
+  </section>
+
+  <section class="part" aria-labelledby="art-h">
+    <div class="wrap stack">
+      <header>
+        <p class="eyebrow">Web games, SVG and simulations · 40 tasks · judged blind</p>
+        <h2 id="art-h">ArtifactsBench</h2>
+      </header>
+      <div class="prose">
+        <p>ArtifactsBench asks for a working web page from a short prompt. We drew a seeded 40-task sample from its 1,825 tasks, weighted toward games: 24 games across all nine game subgenres, 6 SVG drawings, 4 web visuals and 6 physics or 3D simulations. Each agent built one self-contained <code>index.html</code> per prompt in the same sandbox, with 1,200 seconds per task.</p>
+        <p>Each page was screenshotted three times in Chromium. Claude Opus 5.5 judges then scored two answers to a task side by side, as anonymous A and B, against the task's official 10-item checklist of 10 points each. Like the official judge, they read the full source and the screenshots. We ran one blind round for each of the ten pairs of setups, so each page has one judgement against each of its four rivals. A setup's score on a task is the mean of those four.</p>
+      </div>
+
+      <div class="panel">
+        <header>
+          <h3>Mean score by category and difficulty</h3>
+        </header>
+        <ul class="legend"><li><i class="key q"></i>Qwen IQ4</li><li><i class="key i"></i>Qwen IQ3</li><li><i class="key n"></i>Qwen NVFP4</li><li><i class="key t"></i>Terra</li><li><i class="key s"></i>Sol</li></ul>
+        <div class="chart" id="c-score-rows"></div>
+        <p class="cap">Sol leads every group. Among the rest, IQ3 leads on games, simulations and easy tasks, and Terra on SVG, web visuals and hard tasks. NVFP4 falls furthest behind on SVG, simulations and medium tasks: four of its five missing or broken pages are medium tasks, and three are simulations. Hover a row for the values.</p>
+      </div>
+
+      <div class="panel">
+        <header>
+          <h3>Head to head, judged side by side</h3>
+          <p class="small">Each cell reads row against column: tasks the row setup scored higher on, then tasks the column setup scored higher on, from the round where the two met. Outlined cells are statistically clear (exact sign test, p &lt; 0.05).</p>
+        </header>
+        <div class="table-wrap"><table class="h2h-matrix" id="c-h2h-art"></table></div>
+        <p class="cap">Sol beat every rival on 36 to 39 of 40 tasks. IQ3 and IQ4 both beat NVFP4. IQ4 also beat Terra 28 to 12, even though Terra's average is higher: when a Qwen page works it is often better than Terra's, but Terra wins by a wide margin whenever a Qwen page is missing or broken.</p>
+      </div>
+
+      <div class="stats">
+        <div class="stat"><div class="v"><span><i class="key q"></i>1</span><span><i class="key i"></i>2</span><span><i class="key n"></i>3</span><span><i class="key t"></i>0</span><span><i class="key s"></i>34</span></div><div class="l">Tasks where each setup has the best score</div></div>
+        <div class="stat"><div class="v"><span><i class="key q"></i>5</span><span><i class="key i"></i>4</span><span><i class="key n"></i>5</span><span><i class="key t"></i>0</span><span><i class="key s"></i>0</span></div><div class="l">Broken pages: missing, throwing a JavaScript error on load, or stuck on a library that failed to load</div></div>
+        <div class="stat"><div class="v"><span><i class="key q"></i>27 KB</span><span><i class="key i"></i>29 KB</span><span><i class="key n"></i>24 KB</span><span><i class="key t"></i>21 KB</span><span><i class="key s"></i>66 KB</span></div><div class="l">Median page size</div></div>
+        <div class="stat"><div class="v"><span><i class="key q"></i>22k</span><span><i class="key i"></i>26k</span><span><i class="key n"></i>14k</span><span><i class="key t"></i>8k</span><span><i class="key s"></i>37k</span></div><div class="l">Median output tokens per page</div></div>
+      </div>
+      <div class="prose"><p class="small">Sol's pages are the largest and the most complete. Terra writes the smallest pages and every one of them runs, but the judges found them thin. The three Qwen builds aim higher than Terra and are less reliable: each has four or five pages that are missing or broken. NVFP4 writes the least of the three, finished three tasks without saving a page, and loses side by side to both workstation builds.</p></div>
+
+      <div class="panel">
+        <header>
+          <h3>Four tasks side by side</h3>
+          <p class="small">First screen of each page, two seconds after load. Each score is the mean of the page's four judgements.</p>
+        </header>
+
+        <article class="example">
+          <header><h3>Earth-Moon orbits</h3><span class="small">Task 394 · physics simulation · medium</span></header>
+          <div class="trio">
+            <figure><img src="img/394-iq4.jpg" alt="Qwen IQ4's page: an Earth and Moon orbit simulator with a large circular orbit, time-speed and orbit-scale sliders, toggles for trails, labels and the barycenter, and a simulation clock." width="800" height="450"><figcaption><span><i class="key q"></i>Qwen IQ4</span><b data-score="394:qwen"></b></figcaption></figure>
+            <figure><img src="img/394-iq3.jpg" alt="Qwen IQ3's page: a bilingual Earth-Moon simulator with time, tilt and Moon-scale sliders, and a dense web of orbit trails around Earth." width="800" height="450"><figcaption><span><i class="key i"></i>Qwen IQ3</span><b data-score="394:iq3"></b></figcaption></figure>
+            <figure><div class="noimg">No page: the agent finished without saving one.</div><figcaption><span><i class="key n"></i>Qwen NVFP4</span><b data-score="394:nvfp4"></b></figcaption></figure>
+            <figure><img src="img/394-terra.jpg" alt="Terra's page: a dark orbital view titled Earth, Moon and the Sun, with the three bodies on a dashed orbit and a telemetry panel showing elapsed time, orbit progress and a full Moon." width="800" height="450"><figcaption><span><i class="key t"></i>Terra</span><b data-score="394:terra"></b></figcaption></figure>
+            <figure><img src="img/394-sol.jpg" alt="Sol's page: a styled layout titled A world in motion, with the Sun, a textured Earth and the Moon in a dark panel, a controls card with perspective toggles, and a Moon phase card." width="800" height="450"><figcaption><span><i class="key s"></i>Sol</span><b data-score="394:sol"></b></figcaption></figure>
+          </div>
+          <p>Sol's page is the most polished, with lit, textured bodies, a Moon phase card and a timeline. The normal IQ4 build comes second with the strongest physics: a barycentric two-body model on a true Keplerian ellipse, with zoom, pan, trails and a live distance readout, though it leaves out the Sun. IQ3's physics is just as real, but its default speed runs about 1,200 days a second, so the Moon smears into a web of trails. Terra's clean dashboard has a correct Moon phase panel, but its orbits are simple squashed circles. NVFP4 finished without saving a page.</p>
+        </article>
+
+        <article class="example">
+          <header><h3>SIM card in yellow and black</h3><span class="small">Task 46 · SVG image · easy</span></header>
+          <div class="trio">
+            <figure><img src="img/46-iq4.jpg" alt="Qwen IQ4's SVG: an upright yellow-and-black SIM card with a clipped corner, a framed chip, signal bars and a GOLD NET 5G label, under the title Yellow and Black SIM." width="800" height="450"><figcaption><span><i class="key q"></i>Qwen IQ4</span><b data-score="46:qwen"></b></figcaption></figure>
+            <figure><img src="img/46-iq3.jpg" alt="Qwen IQ3's SVG: an upright yellow SIM card with a black header reading MOBILE NETWORK, a 5G label, circuit traces and a barcode, above Flip card and Download SVG buttons." width="800" height="450"><figcaption><span><i class="key i"></i>Qwen IQ3</span><b data-score="46:iq3"></b></figcaption></figure>
+            <figure><img src="img/46-nvfp4.jpg" alt="Qwen NVFP4's SVG: a cropped yellow-and-black card with no chip drawn, above a stray line of plain text and a Re-deal card button." width="800" height="450"><figcaption><span><i class="key n"></i>Qwen NVFP4</span><b data-score="46:nvfp4"></b></figcaption></figure>
+            <figure><img src="img/46-terra.jpg" alt="Terra's SVG: a tilted SIM card split diagonally into black and yellow, with a gold contact chip, beside the headline Stay connected." width="800" height="450"><figcaption><span><i class="key t"></i>Terra</span><b data-score="46:terra"></b></figcaption></figure>
+            <figure><img src="img/46-sol.jpg" alt="Sol's SVG: a tilted yellow SIM card with a clipped corner and a segmented contact chip, beside the headline Small card. Big world." width="800" height="450"><figcaption><span><i class="key s"></i>Sol</span><b data-score="46:sol"></b></figcaption></figure>
+          </div>
+          <p>Sol and Terra lead with realistic proportions and convincing contact chips. IQ3's card has a clean chamfer and working flip and download buttons, but its header text runs off the card. The normal IQ4 build drew a stubby portrait card with a shine sweep and pointer tilt, but its chip is a stylised frame rather than a contact pad. NVFP4 put an HTML element inside the SVG text, so the chip and the text never render as graphics and spill out as a line of plain text below the card.</p>
+        </article>
+
+        <article class="example">
+          <header><h3>Racing game</h3><span class="small">Task 1013 · sports game · medium</span></header>
+          <div class="trio">
+            <figure><img src="img/1013-iq4.jpg" alt="Qwen IQ4's game: a start screen titled Neon Racer over a pseudo-3D highway, listing the controls and a checkpoint goal." width="800" height="450"><figcaption><span><i class="key q"></i>Qwen IQ4</span><b data-score="1013:qwen"></b></figcaption></figure>
+            <figure><img src="img/1013-iq3.jpg" alt="Qwen IQ3's game: a pseudo-3D sunset race titled Rumble Racer, with trees along a curving road, a red car, lap 1 of 3 and a speedometer." width="800" height="450"><figcaption><span><i class="key i"></i>Qwen IQ3</span><b data-score="1013:iq3"></b></figcaption></figure>
+            <figure><img src="img/1013-nvfp4.jpg" alt="Qwen NVFP4's game: a top-down circuit with a checkered start line, four cars, a countdown showing 1, lap and time readouts, position 1st of 4 and a minimap." width="800" height="450"><figcaption><span><i class="key n"></i>Qwen NVFP4</span><b data-score="1013:nvfp4"></b></figcaption></figure>
+            <figure><img src="img/1013-terra.jpg" alt="Terra's game: a start screen titled Outrun Coast over a blurred pseudo-3D coastal road at sunset, with key hints and a Start your engine button." width="800" height="450"><figcaption><span><i class="key t"></i>Terra</span><b data-score="1013:terra"></b></figcaption></figure>
+            <figure><img src="img/1013-sol.jpg" alt="Sol's game: a pseudo-3D neon coastal road with a car, position 6 of 6, lap 1 of 3, a race timer, a track map and a starting grid." width="800" height="450"><figcaption><span><i class="key s"></i>Sol</span><b data-score="1013:sol"></b></figcaption></figure>
+          </div>
+          <p>Every Qwen build made a real racer here, and all three outscored Terra. IQ4 wrote an OutRun-style pseudo-3D engine with curves, hills, fog, traffic and an attract mode, and IQ3 a similar one with roadside scenery and engine sound. NVFP4 built a top-down circuit racer with a countdown, three laps, AI rivals and a minimap. Sol's pseudo-3D race adds laps, a race clock and a starting grid. Terra's coastal time attack drives well, with drift and traffic, but has no laps, opponents or countdown.</p>
+        </article>
+
+        <article class="example">
+          <header><h3>Prize wheel with editable odds</h3><span class="small">Task 1202 · casual game · easy</span></header>
+          <div class="trio">
+            <figure><img src="img/1202-iq4.jpg" alt="Qwen IQ4's page: a prize wheel whose slices are sized by weight, beside a prize and odds editor with toggles, weight sliders and a Monte Carlo fairness tester." width="800" height="450"><figcaption><span><i class="key q"></i>Qwen IQ4</span><b data-score="1202:qwen"></b></figcaption></figure>
+            <figure><img src="img/1202-iq3.jpg" alt="Qwen IQ3's page: a prize wheel whose slices are sized by weight, beside a prize editor with colours, weights and chances." width="800" height="450"><figcaption><span><i class="key i"></i>Qwen IQ3</span><b data-score="1202:iq3"></b></figcaption></figure>
+            <figure><img src="img/1202-nvfp4.jpg" alt="Qwen NVFP4's page: a prize wheel and a prize editor, with every label in Chinese." width="800" height="450"><figcaption><span><i class="key n"></i>Qwen NVFP4</span><b data-score="1202:nvfp4"></b></figcaption></figure>
+            <figure><img src="img/1202-terra.jpg" alt="Terra's page: a six-slice pastel prize wheel titled Give it a whirl, beside an editable prize list with weights and chances." width="800" height="450"><figcaption><span><i class="key t"></i>Terra</span><b data-score="1202:terra"></b></figcaption></figure>
+            <figure><img src="img/1202-sol.jpg" alt="Sol's page: a pastel prize wheel with eight labelled slices and a Spin the wheel button, beside an editable prizes and odds table." width="800" height="450"><figcaption><span><i class="key s"></i>Sol</span><b data-score="1202:sol"></b></figcaption></figure>
+          </div>
+          <p>All five wheels work. IQ4's is the most complete Qwen page, with slices sized by weight, an on/off switch per prize and a Monte Carlo fairness tester. IQ3's draws weighted slices with sound and confetti. NVFP4's works, but its whole interface is in Chinese although the prompt was in English. Terra's slices are all the same size, so the wheel does not show the odds. Sol's wheel matches its odds table, with eased motion.</p>
+        </article>
+      </div>
+
+      <div class="panel">
+        <header>
+          <h3>All 40 creative tasks</h3>
+          <p class="small">Each score is the mean of four judgements, and the best on each task is in bold. Hover a strip for all the judgements.</p>
+        </header>
+        <div class="table-wrap">
+          <table class="data" id="t-creative">
+            <thead><tr><th>Task</th><th>Prompt</th><th>Category</th><th>Level</th><th class="n">IQ4</th><th class="n">IQ3</th><th class="n">NVFP4</th><th class="n">Terra</th><th class="n">Sol</th><th>0–100</th><th>Notes</th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="part" aria-labelledby="time-h">
+    <div class="wrap stack">
+      <header>
+        <p class="eyebrow">Wall-clock time per task · both benchmarks</p>
+        <h2 id="time-h">Time</h2>
+      </header>
+      <div class="prose">
+        <p>Time runs from launching the agent to its exit, task by task; a task that timed out counts at the limit. Terra and NVFP4 are the fast pair: one of them finished first on every one of the 98 tasks. The workstation Qwen builds are much slower than Sol on Godot and faster than Sol on creative builds.</p>
+      </div>
+
+      <div class="duo">
+        <div class="panel">
+          <header>
+            <h3>Godot: pass rate against time</h3>
+          </header>
+          <ul class="legend"><li><i class="key q"></i>Qwen IQ4</li><li><i class="key i"></i>Qwen IQ3</li><li><i class="key n"></i>Qwen NVFP4</li><li><i class="key t"></i>Terra</li><li><i class="key s"></i>Sol</li></ul>
+          <div class="chart" id="c-trade-gdb"></div>
+          <p class="cap">Up and to the left is better. Time is the median per task, with timeouts counted at 600 s.</p>
+        </div>
+        <div class="panel">
+          <header>
+            <h3>Creative: score against time</h3>
+          </header>
+          <ul class="legend"><li><i class="key q"></i>Qwen IQ4</li><li><i class="key i"></i>Qwen IQ3</li><li><i class="key n"></i>Qwen NVFP4</li><li><i class="key t"></i>Terra</li><li><i class="key s"></i>Sol</li></ul>
+          <div class="chart" id="c-trade-art"></div>
+          <p class="cap">Up and to the left is better. Time is the median per page.</p>
+        </div>
+      </div>
+
+      <div class="duo">
+        <div class="panel">
+          <header>
+            <h3>GameDevBench: tasks finished by a given time</h3>
+          </header>
+          <ul class="legend"></ul>
+          <div class="chart" id="c-finish-gdb"></div>
+          <p class="cap">Each step is one more task whose agent stopped on its own; dots mark the median. Terra finished every task within 100 s. The Qwen lines stop at 38 (IQ4), 45 (IQ3) and 47 (NVFP4) of 58, because the rest ran the full 600 s.</p>
+        </div>
+        <div class="panel">
+          <header>
+            <h3>ArtifactsBench: pages finished by a given time</h3>
+          </header>
+          <ul class="legend"></ul>
+          <div class="chart" id="c-finish-art"></div>
+          <p class="cap">NVFP4 and Terra rise almost at once. The workstation Qwen curves rise before Sol's but stop short after timeouts. Sol's slowest page took 1,059 s.</p>
+        </div>
+      </div>
+
+      <div class="stats">
+        <div class="stat"><div class="v"><span><i class="key q"></i>0</span><span><i class="key i"></i>0</span><span><i class="key n"></i>13</span><span><i class="key t"></i>45</span><span><i class="key s"></i>0</span></div><div class="l">Godot tasks each setup finished first, of 58</div></div>
+        <div class="stat"><div class="v"><span><i class="key q"></i>0</span><span><i class="key i"></i>0</span><span><i class="key n"></i>25</span><span><i class="key t"></i>15</span><span><i class="key s"></i>0</span></div><div class="l">Creative pages each setup finished first, of 40</div></div>
+        <div class="stat"><div class="v"><span><i class="key q"></i>6.8 h</span><span><i class="key i"></i>5.5 h</span><span><i class="key n"></i>3.6 h</span><span><i class="key t"></i>0.8 h</span><span><i class="key s"></i>2.0 h</span></div><div class="l">Total time for the 58 Godot tasks</div></div>
+        <div class="stat"><div class="v"><span><i class="key q"></i>5.7 h</span><span><i class="key i"></i>4.8 h</span><span><i class="key n"></i>1.7 h</span><span><i class="key t"></i>0.8 h</span><span><i class="key s"></i>7.0 h</span></div><div class="l">Total time for the 40 creative pages</div></div>
+      </div>
+
+      <div class="duo">
+        <div class="panel">
+          <header>
+            <h3>Godot: median time by how many setups passed</h3>
+          </header>
+          <ul class="legend"><li><i class="key q"></i>Qwen IQ4</li><li><i class="key i"></i>Qwen IQ3</li><li><i class="key n"></i>Qwen NVFP4</li><li><i class="key t"></i>Terra</li><li><i class="key s"></i>Sol</li></ul>
+          <div class="chart" id="c-time-gdb"></div>
+          <p class="cap">Even on the 15 tasks all five solved, the workstation builds took two to three times as long as Sol, NVFP4 about as long as Sol, and Terra less than half.</p>
+        </div>
+        <div class="panel">
+          <header>
+            <h3>Creative: median time by category and difficulty</h3>
+          </header>
+          <ul class="legend"><li><i class="key q"></i>Qwen IQ4</li><li><i class="key i"></i>Qwen IQ3</li><li><i class="key n"></i>Qwen NVFP4</li><li><i class="key t"></i>Terra</li><li><i class="key s"></i>Sol</li></ul>
+          <div class="chart" id="c-time-art"></div>
+          <p class="cap">NVFP4 and Terra stay under two and a half minutes in every group. The workstation builds are quickest on small SVG and web-visual pages; on hard tasks they take as long as Sol or longer.</p>
+        </div>
+      </div>
+
+      <div class="prose">
+        <p class="small">Why speed and quality split this way: a Godot task rewards reading the project, making a targeted fix and checking it. There every Qwen build writes two to four times as many tokens as Sol or Terra; on the workstation at 57 to 75 tokens/s that costs minutes, and under SGLang on two RTX 6000 Pro GPUs it costs far less. On creative builds Sol at xhigh keeps polishing, with 37k output tokens and 66 KB pages, and that extra time buys its lead. NVFP4 finishes pages fast but writes less than the workstation builds (14k tokens against 22k to 26k), and its pages score lower.</p>
+      </div>
+
+      <div class="panel">
+        <details class="more">
+          <summary>All 58 Godot tasks: results and time<span>show table</span></summary>
+          <p class="small">The fastest time on each task is in bold.</p>
+          <div class="table-wrap">
+            <table class="data" id="t-gdb">
+              <thead><tr><th>Task</th><th>IQ4</th><th class="n">Time</th><th>IQ3</th><th class="n">Time</th><th>NVFP4</th><th class="n">Time</th><th>Terra</th><th class="n">Time</th><th>Sol</th><th class="n">Time</th><th>Astra (published)</th></tr></thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </details>
+      </div>
+      <div class="panel">
+        <details class="more">
+          <summary>All 40 creative pages: time<span>show table</span></summary>
+          <p class="small">The fastest time on each task is in bold.</p>
+          <div class="table-wrap">
+            <table class="data" id="t-art-time">
+              <thead><tr><th>Task</th><th>Prompt</th><th class="n">IQ4</th><th class="n">IQ3</th><th class="n">NVFP4</th><th class="n">Terra</th><th class="n">Sol</th></tr></thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </details>
+      </div>
+    </div>
+  </section>
+
+  <section class="part" aria-labelledby="abl-h">
+    <div class="wrap stack">
+      <header>
+        <p class="eyebrow">Same quantization, harness and settings</p>
+        <h2 id="abl-h">Abliterated vs normal IQ4</h2>
+      </header>
+      <div class="prose">
+        <p>The first IQ4_XS run used an abliterated build, one with its refusal behaviour removed. We reran the normal build on the same workstation with the same settings and compared the two directly. For a fair creative score, both are averaged against the same three rivals (IQ3, Terra and Sol), and they also met once side by side.</p>
+      </div>
+      <div class="table-wrap panel">
+        <table class="setup" id="t-abl">
+          <thead><tr><th></th><th class="n"><span><i class="key q"></i>IQ4 normal</span></th><th class="n"><span><i class="key a"></i>IQ4 abliterated</span></th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      <div class="prose">
+        <p class="small" id="abl-pairs"></p>
+        <p class="small">Abliteration made no measurable difference to quality on either benchmark. Both builds decoded at about 57 tokens/s; the normal build ran longer per task in this run and hit the time limit a little more often.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="part" aria-labelledby="method-h">
+    <div class="wrap stack">
+      <header>
+        <p class="eyebrow">Read the numbers with these in mind</p>
+        <h2 id="method-h">Method and caveats</h2>
+      </header>
+      <ul class="notes">
+        <li><b>Effort is not matched.</b> The Qwen builds ran at medium, Sol and Terra at xhigh. On the Godot tasks, the IQ4 build's highest setting only added timeouts. On the creative tasks the Qwen builds rarely hit the limit, so a higher-effort Qwen run there is the obvious follow-up.</li>
+        <li><b>The three Qwen deployments differ in more than quantization.</b> IQ4_XS and IQ3_S ran as GGUF files on the Strata server on one workstation GPU; NVFP4 ran on SGLang across two RTX 6000 Pro GPUs. The servers may apply different default sampling settings, which we did not control, so NVFP4's lower creative scores could come partly from serving rather than from the quantization alone.</li>
+        <li><b>Time was not measured under equal conditions.</b> Every Qwen build ran one task at a time on its own server. Sol and Terra used OpenAI's service, four Godot tasks or two creative tasks at once, and their times also depend on that service's load. The first NVFP4 attempt was discarded after its server stopped answering four minutes in; the rerun had no connection errors.</li>
+        <li><b>The creative judge is Claude Opus 5.5, not the official Gemini 2.5 Pro.</b> The scores compare these setups with each other and cannot be placed on the ArtifactsBench leaderboard.</li>
+        <li><b>Round-robin judging.</b> Fourteen blind rounds, with fresh judges and the same brief and checklists: one for each pair of the five setups, and four more for the abliterated IQ4 build. Judges score a page about 2 to 3 points lower when the other answer is Sol's; every setup meets Sol once, so the mean of its judgements evens this out. Sol's five rounds agree closely, from 76.1 to 77.8.</li>
+        <li><b>Long pages are cut at 108,000 characters for judging</b>, matching the official 27k-token limit. Embedded base64 fonts and images are replaced by a placeholder first. Sol's task 380 page is 4 MB, almost all fonts; in the first round the judge saw almost none of its code, so that task was rejudged with the fonts elided. Even then its scripts fall past the cut, so in every round it was judged on its markup, styles and screenshots. The abliterated IQ4 answer moved 7 points between those two judges, a rough measure of judge noise.</li>
+        <li><b>Blind judging.</b> Answers were labelled A and B at random, the key was kept outside the judges' folders, and the pages were checked for any text naming a model or tool. A few judges listed or hashed other packet files in their round while working; none opened another task's answers.</li>
+        <li><b>One run per task, on samples.</b> 58 Godot tasks and 40 creative tasks, each run once per setup. Sol's creative lead, and Sol's and Terra's Godot lead over IQ4 and NVFP4, are statistically clear; differences among the three Qwen builds on Godot are not.</li>
+        <li><b>Exclusions.</b> Seven GameDevBench tasks have reference solutions that fail in this arm64 VM (0012, 0015, 0051, 0052, 0059, 0068, 0130). Two fell in the sample and are left out for every run.</li>
+        <li><b>Rule breaks.</b> On task 1255 (Mapbox in React) every Qwen build and Terra load scripts from a CDN although the prompt asked for everything inline; Sol fetches them only after the user enters a Mapbox token. On task 1568 the IQ4, IQ3 and NVFP4 pages also fetch a 3D library from a CDN, and for IQ3 and NVFP4 it fails to load. All were judged as they rendered.</li>
+        <li><b>A first creative attempt was discarded.</b> It ran outside the sandbox, where Codex used the VM's Playwright install to check its own output.</li>
+      </ul>
+      <div class="prose">
+        <p class="small">Sources: <a href="https://github.com/waynchi/gamedevbench">GameDevBench</a> at commit 54589a4, with a patch adding a PI solver. <a href="https://github.com/Tencent-Hunyuan/ArtifactsBenchmark">ArtifactsBench</a> at commit 88c968b; task prompts and checklists are from ArtifactsBench, CC BY 4.0. Screenshots show pages written by the agents.</p>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="wrap">Run and judged from 30 October to 2 November 2026. Report written by Claude from the run data.</div>
+</footer>
+
+<script id="data" type="application/json">{"models":[{"key":"qwen","k":"q","name":"Qwen IQ4"},{"key":"iq3","k":"i","name":"Qwen IQ3"},{"key":"nvfp4","k":"n","name":"Qwen NVFP4"},{"key":"terra","k":"t","name":"Terra"},{"key":"sol","k":"s","name":"Sol"}],"gdb":[{"task":"0002","sol":false,"sol_s":63,"sol_to":false,"astra":false,"terra":false,"terra_s":48,"terra_to":false,"iq3":false,"iq3_s":393,"iq3_to":false,"abl":false,"abl_s":358,"abl_to":false,"nvfp4":false,"nvfp4_s":167,"nvfp4_to":false,"qwen":false,"qwen_s":550,"qwen_to":false},{"task":"0009","sol":false,"sol_s":113,"sol_to":false,"astra":true,"terra":true,"terra_s":44,"terra_to":false,"iq3":true,"iq3_s":441,"iq3_to":false,"abl":false,"abl_s":303,"abl_to":false,"nvfp4":false,"nvfp4_s":331,"nvfp4_to":false,"qwen":true,"qwen_s":455,"qwen_to":false},{"task":"0022","sol":true,"sol_s":33,"sol_to":false,"astra":true,"terra":true,"terra_s":31,"terra_to":false,"iq3":true,"iq3_s":29,"iq3_to":false,"abl":true,"abl_s":21,"abl_to":false,"nvfp4":true,"nvfp4_s":10,"nvfp4_to":false,"qwen":true,"qwen_s":40,"qwen_to":false},{"task":"0033","sol":false,"sol_s":324,"sol_to":false,"astra":false,"terra":false,"terra_s":93,"terra_to":false,"iq3":false,"iq3_s":573,"iq3_to":false,"abl":false,"abl_s":600,"abl_to":true,"nvfp4":false,"nvfp4_s":600,"nvfp4_to":true,"qwen":false,"qwen_s":600,"qwen_to":true},{"task":"0034","sol":false,"sol_s":66,"sol_to":false,"astra":false,"terra":false,"terra_s":38,"terra_to":false,"iq3":false,"iq3_s":55,"iq3_to":false,"abl":false,"abl_s":248,"abl_to":false,"nvfp4":false,"nvfp4_s":23,"nvfp4_to":false,"qwen":false,"qwen_s":291,"qwen_to":false},{"task":"0039","sol":true,"sol_s":139,"sol_to":false,"astra":true,"terra":true,"terra_s":59,"terra_to":false,"iq3":true,"iq3_s":327,"iq3_to":false,"abl":true,"abl_s":600,"abl_to":true,"nvfp4":false,"nvfp4_s":600,"nvfp4_to":true,"qwen":true,"qwen_s":437,"qwen_to":false},{"task":"0043","sol":true,"sol_s":70,"sol_to":false,"astra":true,"terra":true,"terra_s":35,"terra_to":false,"iq3":true,"iq3_s":373,"iq3_to":false,"abl":true,"abl_s":290,"abl_to":false,"nvfp4":false,"nvfp4_s":12,"nvfp4_to":false,"qwen":true,"qwen_s":281,"qwen_to":false},{"task":"0048","sol":false,"sol_s":166,"sol_to":false,"astra":false,"terra":false,"terra_s":61,"terra_to":false,"iq3":false,"iq3_s":491,"iq3_to":false,"abl":false,"abl_s":194,"abl_to":false,"nvfp4":false,"nvfp4_s":46,"nvfp4_to":false,"qwen":false,"qwen_s":600,"qwen_to":true},{"task":"0049","sol":true,"sol_s":127,"sol_to":false,"astra":true,"terra":true,"terra_s":44,"terra_to":false,"iq3":true,"iq3_s":210,"iq3_to":false,"abl":true,"abl_s":273,"abl_to":false,"nvfp4":true,"nvfp4_s":134,"nvfp4_to":false,"qwen":true,"qwen_s":292,"qwen_to":false},{"task":"0050","sol":true,"sol_s":85,"sol_to":false,"astra":true,"terra":true,"terra_s":28,"terra_to":false,"iq3":true,"iq3_s":202,"iq3_to":false,"abl":true,"abl_s":160,"abl_to":false,"nvfp4":true,"nvfp4_s":67,"nvfp4_to":false,"qwen":true,"qwen_s":404,"qwen_to":false},{"task":"0053","sol":true,"sol_s":31,"sol_to":false,"astra":true,"terra":true,"terra_s":19,"terra_to":false,"iq3":true,"iq3_s":70,"iq3_to":false,"abl":true,"abl_s":47,"abl_to":false,"nvfp4":true,"nvfp4_s":9,"nvfp4_to":false,"qwen":true,"qwen_s":79,"qwen_to":false},{"task":"0073","sol":true,"sol_s":124,"sol_to":false,"astra":false,"terra":false,"terra_s":39,"terra_to":false,"iq3":true,"iq3_s":176,"iq3_to":false,"abl":true,"abl_s":204,"abl_to":false,"nvfp4":true,"nvfp4_s":419,"nvfp4_to":false,"qwen":true,"qwen_s":549,"qwen_to":false},{"task":"0074","sol":false,"sol_s":152,"sol_to":false,"astra":true,"terra":true,"terra_s":57,"terra_to":false,"iq3":true,"iq3_s":222,"iq3_to":false,"abl":false,"abl_s":87,"abl_to":false,"nvfp4":true,"nvfp4_s":72,"nvfp4_to":false,"qwen":true,"qwen_s":136,"qwen_to":false},{"task":"0077","sol":false,"sol_s":115,"sol_to":false,"astra":false,"terra":true,"terra_s":44,"terra_to":false,"iq3":true,"iq3_s":88,"iq3_to":false,"abl":true,"abl_s":129,"abl_to":false,"nvfp4":true,"nvfp4_s":33,"nvfp4_to":false,"qwen":true,"qwen_s":206,"qwen_to":false},{"task":"0099","sol":true,"sol_s":37,"sol_to":false,"astra":true,"terra":true,"terra_s":25,"terra_to":false,"iq3":true,"iq3_s":89,"iq3_to":false,"abl":true,"abl_s":91,"abl_to":false,"nvfp4":true,"nvfp4_s":18,"nvfp4_to":false,"qwen":true,"qwen_s":96,"qwen_to":false},{"task":"0106","sol":true,"sol_s":470,"sol_to":false,"astra":true,"terra":true,"terra_s":100,"terra_to":false,"iq3":false,"iq3_s":600,"iq3_to":true,"abl":false,"abl_s":600,"abl_to":true,"nvfp4":false,"nvfp4_s":600,"nvfp4_to":true,"qwen":false,"qwen_s":600,"qwen_to":true},{"task":"0113","sol":true,"sol_s":116,"sol_to":false,"astra":true,"terra":true,"terra_s":48,"terra_to":false,"iq3":true,"iq3_s":388,"iq3_to":false,"abl":true,"abl_s":200,"abl_to":false,"nvfp4":true,"nvfp4_s":422,"nvfp4_to":false,"qwen":true,"qwen_s":243,"qwen_to":false},{"task":"0115","sol":true,"sol_s":60,"sol_to":false,"astra":true,"terra":true,"terra_s":30,"terra_to":false,"iq3":true,"iq3_s":127,"iq3_to":false,"abl":true,"abl_s":175,"abl_to":false,"nvfp4":false,"nvfp4_s":27,"nvfp4_to":false,"qwen":true,"qwen_s":215,"qwen_to":false},{"task":"0124","sol":true,"sol_s":70,"sol_to":false,"astra":true,"terra":true,"terra_s":23,"terra_to":false,"iq3":true,"iq3_s":148,"iq3_to":false,"abl":true,"abl_s":212,"abl_to":false,"nvfp4":true,"nvfp4_s":76,"nvfp4_to":false,"qwen":true,"qwen_s":123,"qwen_to":false},{"task":"0126","sol":true,"sol_s":39,"sol_to":false,"astra":true,"terra":true,"terra_s":20,"terra_to":false,"iq3":false,"iq3_s":56,"iq3_to":false,"abl":true,"abl_s":70,"abl_to":false,"nvfp4":true,"nvfp4_s":14,"nvfp4_to":false,"qwen":true,"qwen_s":205,"qwen_to":false},{"task":"0134","sol":true,"sol_s":68,"sol_to":false,"astra":true,"terra":true,"terra_s":51,"terra_to":false,"iq3":false,"iq3_s":134,"iq3_to":false,"abl":false,"abl_s":183,"abl_to":false,"nvfp4":true,"nvfp4_s":122,"nvfp4_to":false,"qwen":true,"qwen_s":306,"qwen_to":false},{"task":"0135","sol":true,"sol_s":88,"sol_to":false,"astra":true,"terra":true,"terra_s":44,"terra_to":false,"iq3":true,"iq3_s":252,"iq3_to":false,"abl":true,"abl_s":516,"abl_to":false,"nvfp4":false,"nvfp4_s":24,"nvfp4_to":false,"qwen":true,"qwen_s":212,"qwen_to":false},{"task":"0146","sol":true,"sol_s":49,"sol_to":false,"astra":true,"terra":true,"terra_s":43,"terra_to":false,"iq3":false,"iq3_s":62,"iq3_to":false,"abl":false,"abl_s":435,"abl_to":false,"nvfp4":false,"nvfp4_s":163,"nvfp4_to":false,"qwen":false,"qwen_s":553,"qwen_to":false},{"task":"0157","sol":true,"sol_s":136,"sol_to":false,"astra":true,"terra":true,"terra_s":43,"terra_to":false,"iq3":false,"iq3_s":161,"iq3_to":false,"abl":true,"abl_s":157,"abl_to":false,"nvfp4":false,"nvfp4_s":15,"nvfp4_to":false,"qwen":false,"qwen_s":444,"qwen_to":false},{"task":"0160","sol":true,"sol_s":78,"sol_to":false,"astra":true,"terra":true,"terra_s":37,"terra_to":false,"iq3":true,"iq3_s":70,"iq3_to":false,"abl":true,"abl_s":65,"abl_to":false,"nvfp4":false,"nvfp4_s":76,"nvfp4_to":false,"qwen":true,"qwen_s":228,"qwen_to":false},{"task":"0163","sol":true,"sol_s":86,"sol_to":false,"astra":true,"terra":true,"terra_s":44,"terra_to":false,"iq3":false,"iq3_s":128,"iq3_to":false,"abl":false,"abl_s":167,"abl_to":false,"nvfp4":false,"nvfp4_s":24,"nvfp4_to":false,"qwen":false,"qwen_s":133,"qwen_to":false},{"task":"0168","sol":true,"sol_s":110,"sol_to":false,"astra":true,"terra":true,"terra_s":38,"terra_to":false,"iq3":true,"iq3_s":478,"iq3_to":false,"abl":true,"abl_s":303,"abl_to":false,"nvfp4":true,"nvfp4_s":109,"nvfp4_to":false,"qwen":false,"qwen_s":343,"qwen_to":false},{"task":"0171","sol":true,"sol_s":108,"sol_to":false,"astra":true,"terra":true,"terra_s":48,"terra_to":false,"iq3":true,"iq3_s":307,"iq3_to":false,"abl":true,"abl_s":354,"abl_to":false,"nvfp4":true,"nvfp4_s":115,"nvfp4_to":false,"qwen":true,"qwen_s":551,"qwen_to":false},{"task":"0172","sol":true,"sol_s":80,"sol_to":false,"astra":true,"terra":true,"terra_s":36,"terra_to":false,"iq3":false,"iq3_s":600,"iq3_to":true,"abl":true,"abl_s":600,"abl_to":true,"nvfp4":false,"nvfp4_s":600,"nvfp4_to":true,"qwen":false,"qwen_s":600,"qwen_to":true},{"task":"0183","sol":false,"sol_s":73,"sol_to":false,"astra":false,"terra":false,"terra_s":68,"terra_to":false,"iq3":false,"iq3_s":600,"iq3_to":true,"abl":false,"abl_s":600,"abl_to":true,"nvfp4":false,"nvfp4_s":600,"nvfp4_to":true,"qwen":false,"qwen_s":600,"qwen_to":true},{"task":"0185","sol":false,"sol_s":206,"sol_to":false,"astra":false,"terra":false,"terra_s":78,"terra_to":false,"iq3":false,"iq3_s":600,"iq3_to":true,"abl":false,"abl_s":600,"abl_to":true,"nvfp4":false,"nvfp4_s":600,"nvfp4_to":true,"qwen":false,"qwen_s":600,"qwen_to":true},{"task":"0199","sol":true,"sol_s":57,"sol_to":false,"astra":true,"terra":true,"terra_s":30,"terra_to":false,"iq3":true,"iq3_s":240,"iq3_to":false,"abl":false,"abl_s":122,"abl_to":false,"nvfp4":false,"nvfp4_s":28,"nvfp4_to":false,"qwen":false,"qwen_s":429,"qwen_to":false},{"task":"0206","sol":false,"sol_s":95,"sol_to":false,"astra":false,"terra":false,"terra_s":33,"terra_to":false,"iq3":false,"iq3_s":444,"iq3_to":false,"abl":false,"abl_s":600,"abl_to":true,"nvfp4":false,"nvfp4_s":143,"nvfp4_to":false,"qwen":false,"qwen_s":600,"qwen_to":true},{"task":"0209","sol":false,"sol_s":68,"sol_to":false,"astra":false,"terra":false,"terra_s":41,"terra_to":false,"iq3":false,"iq3_s":287,"iq3_to":false,"abl":false,"abl_s":250,"abl_to":false,"nvfp4":false,"nvfp4_s":77,"nvfp4_to":false,"qwen":false,"qwen_s":387,"qwen_to":false},{"task":"0217","sol":false,"sol_s":89,"sol_to":false,"astra":false,"terra":false,"terra_s":28,"terra_to":false,"iq3":false,"iq3_s":600,"iq3_to":true,"abl":false,"abl_s":350,"abl_to":false,"nvfp4":false,"nvfp4_s":600,"nvfp4_to":true,"qwen":false,"qwen_s":193,"qwen_to":false},{"task":"0224","sol":false,"sol_s":85,"sol_to":false,"astra":false,"terra":false,"terra_s":30,"terra_to":false,"iq3":false,"iq3_s":268,"iq3_to":false,"abl":false,"abl_s":568,"abl_to":false,"nvfp4":false,"nvfp4_s":53,"nvfp4_to":false,"qwen":false,"qwen_s":336,"qwen_to":false},{"task":"0228","sol":false,"sol_s":117,"sol_to":false,"astra":false,"terra":false,"terra_s":29,"terra_to":false,"iq3":false,"iq3_s":600,"iq3_to":true,"abl":false,"abl_s":539,"abl_to":false,"nvfp4":true,"nvfp4_s":73,"nvfp4_to":false,"qwen":false,"qwen_s":563,"qwen_to":false},{"task":"0231","sol":false,"sol_s":92,"sol_to":false,"astra":false,"terra":false,"terra_s":34,"terra_to":false,"iq3":false,"iq3_s":383,"iq3_to":false,"abl":true,"abl_s":353,"abl_to":false,"nvfp4":false,"nvfp4_s":229,"nvfp4_to":false,"qwen":false,"qwen_s":600,"qwen_to":true},{"task":"0243","sol":true,"sol_s":46,"sol_to":false,"astra":true,"terra":false,"terra_s":27,"terra_to":false,"iq3":false,"iq3_s":265,"iq3_to":false,"abl":false,"abl_s":168,"abl_to":false,"nvfp4":false,"nvfp4_s":95,"nvfp4_to":false,"qwen":false,"qwen_s":431,"qwen_to":false},{"task":"0246","sol":true,"sol_s":43,"sol_to":false,"astra":true,"terra":false,"terra_s":30,"terra_to":false,"iq3":false,"iq3_s":180,"iq3_to":false,"abl":false,"abl_s":248,"abl_to":false,"nvfp4":false,"nvfp4_s":41,"nvfp4_to":false,"qwen":false,"qwen_s":365,"qwen_to":false},{"task":"0250","sol":true,"sol_s":246,"sol_to":false,"astra":true,"terra":true,"terra_s":63,"terra_to":false,"iq3":true,"iq3_s":553,"iq3_to":false,"abl":true,"abl_s":600,"abl_to":true,"nvfp4":true,"nvfp4_s":600,"nvfp4_to":true,"qwen":false,"qwen_s":600,"qwen_to":true},{"task":"0254","sol":true,"sol_s":181,"sol_to":false,"astra":true,"terra":true,"terra_s":69,"terra_to":false,"iq3":true,"iq3_s":600,"iq3_to":true,"abl":true,"abl_s":600,"abl_to":true,"nvfp4":true,"nvfp4_s":548,"nvfp4_to":false,"qwen":true,"qwen_s":600,"qwen_to":true},{"task":"0260","sol":true,"sol_s":188,"sol_to":false,"astra":true,"terra":true,"terra_s":63,"terra_to":false,"iq3":true,"iq3_s":600,"iq3_to":true,"abl":false,"abl_s":600,"abl_to":true,"nvfp4":true,"nvfp4_s":97,"nvfp4_to":false,"qwen":true,"qwen_s":600,"qwen_to":true},{"task":"0263","sol":false,"sol_s":99,"sol_to":false,"astra":false,"terra":false,"terra_s":43,"terra_to":false,"iq3":false,"iq3_s":392,"iq3_to":false,"abl":false,"abl_s":456,"abl_to":false,"nvfp4":false,"nvfp4_s":221,"nvfp4_to":false,"qwen":false,"qwen_s":600,"qwen_to":true},{"task":"0268","sol":false,"sol_s":123,"sol_to":false,"astra":false,"terra":false,"terra_s":42,"terra_to":false,"iq3":true,"iq3_s":472,"iq3_to":false,"abl":false,"abl_s":516,"abl_to":false,"nvfp4":true,"nvfp4_s":600,"nvfp4_to":true,"qwen":false,"qwen_s":600,"qwen_to":true},{"task":"0274","sol":true,"sol_s":112,"sol_to":false,"astra":true,"terra":true,"terra_s":43,"terra_to":false,"iq3":true,"iq3_s":98,"iq3_to":false,"abl":true,"abl_s":76,"abl_to":false,"nvfp4":true,"nvfp4_s":143,"nvfp4_to":false,"qwen":true,"qwen_s":279,"qwen_to":false},{"task":"0280","sol":true,"sol_s":97,"sol_to":false,"astra":true,"terra":true,"terra_s":41,"terra_to":false,"iq3":true,"iq3_s":199,"iq3_to":false,"abl":true,"abl_s":357,"abl_to":false,"nvfp4":true,"nvfp4_s":87,"nvfp4_to":false,"qwen":true,"qwen_s":315,"qwen_to":false},{"task":"0282","sol":false,"sol_s":191,"sol_to":false,"astra":false,"terra":false,"terra_s":66,"terra_to":false,"iq3":false,"iq3_s":600,"iq3_to":true,"abl":false,"abl_s":600,"abl_to":true,"nvfp4":false,"nvfp4_s":600,"nvfp4_to":true,"qwen":false,"qwen_s":600,"qwen_to":true},{"task":"0284","sol":false,"sol_s":263,"sol_to":false,"astra":false,"terra":false,"terra_s":57,"terra_to":false,"iq3":false,"iq3_s":600,"iq3_to":true,"abl":false,"abl_s":600,"abl_to":true,"nvfp4":false,"nvfp4_s":600,"nvfp4_to":true,"qwen":false,"qwen_s":600,"qwen_to":true},{"task":"0288","sol":false,"sol_s":221,"sol_to":false,"astra":false,"terra":false,"terra_s":57,"terra_to":false,"iq3":false,"iq3_s":600,"iq3_to":true,"abl":false,"abl_s":600,"abl_to":true,"nvfp4":false,"nvfp4_s":245,"nvfp4_to":false,"qwen":false,"qwen_s":600,"qwen_to":true},{"task":"0292","sol":true,"sol_s":236,"sol_to":false,"astra":true,"terra":true,"terra_s":58,"terra_to":false,"iq3":true,"iq3_s":600,"iq3_to":true,"abl":true,"abl_s":600,"abl_to":true,"nvfp4":true,"nvfp4_s":145,"nvfp4_to":false,"qwen":true,"qwen_s":600,"qwen_to":true},{"task":"0300","sol":true,"sol_s":186,"sol_to":false,"astra":true,"terra":true,"terra_s":76,"terra_to":false,"iq3":true,"iq3_s":600,"iq3_to":true,"abl":false,"abl_s":600,"abl_to":true,"nvfp4":false,"nvfp4_s":127,"nvfp4_to":false,"qwen":true,"qwen_s":600,"qwen_to":true},{"task":"0310","sol":true,"sol_s":214,"sol_to":false,"astra":true,"terra":false,"terra_s":52,"terra_to":false,"iq3":false,"iq3_s":467,"iq3_to":false,"abl":false,"abl_s":600,"abl_to":true,"nvfp4":true,"nvfp4_s":400,"nvfp4_to":false,"qwen":true,"qwen_s":559,"qwen_to":false},{"task":"0314","sol":true,"sol_s":192,"sol_to":false,"astra":true,"terra":false,"terra_s":62,"terra_to":false,"iq3":false,"iq3_s":416,"iq3_to":false,"abl":false,"abl_s":518,"abl_to":false,"nvfp4":false,"nvfp4_s":247,"nvfp4_to":false,"qwen":false,"qwen_s":600,"qwen_to":true},{"task":"0315","sol":true,"sol_s":108,"sol_to":false,"astra":true,"terra":true,"terra_s":54,"terra_to":false,"iq3":true,"iq3_s":346,"iq3_to":false,"abl":false,"abl_s":600,"abl_to":true,"nvfp4":true,"nvfp4_s":59,"nvfp4_to":false,"qwen":true,"qwen_s":556,"qwen_to":false},{"task":"0318","sol":true,"sol_s":85,"sol_to":false,"astra":true,"terra":true,"terra_s":46,"terra_to":false,"iq3":false,"iq3_s":113,"iq3_to":false,"abl":true,"abl_s":430,"abl_to":false,"nvfp4":false,"nvfp4_s":54,"nvfp4_to":false,"qwen":false,"qwen_s":261,"qwen_to":false},{"task":"0322","sol":true,"sol_s":118,"sol_to":false,"astra":true,"terra":true,"terra_s":60,"terra_to":false,"iq3":true,"iq3_s":591,"iq3_to":false,"abl":false,"abl_s":508,"abl_to":false,"nvfp4":true,"nvfp4_s":291,"nvfp4_to":false,"qwen":false,"qwen_s":600,"qwen_to":true},{"task":"0329","sol":true,"sol_s":89,"sol_to":false,"astra":true,"terra":true,"terra_s":50,"terra_to":false,"iq3":true,"iq3_s":265,"iq3_to":false,"abl":true,"abl_s":306,"abl_to":false,"nvfp4":true,"nvfp4_s":363,"nvfp4_to":false,"qwen":true,"qwen_s":391,"qwen_to":false}],"intervals":{"qwen":[35.9,60.8],"iq3":[39.2,64.1],"nvfp4":[32.7,57.5],"terra":[49.2,73.4],"sol":[52.7,76.4],"abl":[34.3,59.2],"astra":[54.4,77.9]},"pairs":{"gdb":[{"a":"qwen","b":"iq3","both":25,"onlyA":3,"onlyB":5,"neither":25,"p":0.7265625},{"a":"qwen","b":"nvfp4","both":21,"onlyA":7,"onlyB":5,"neither":25,"p":0.7744140625},{"a":"qwen","b":"terra","both":26,"onlyA":2,"onlyB":10,"neither":20,"p":0.03857421875},{"a":"qwen","b":"sol","both":25,"onlyA":3,"onlyB":13,"neither":17,"p":0.021270751953125},{"a":"iq3","b":"nvfp4","both":22,"onlyA":8,"onlyB":4,"neither":24,"p":0.3876953125},{"a":"iq3","b":"terra","both":28,"onlyA":2,"onlyB":8,"neither":20,"p":0.109375},{"a":"iq3","b":"sol","both":26,"onlyA":4,"onlyB":12,"neither":16,"p":0.076812744140625},{"a":"nvfp4","b":"terra","both":22,"onlyA":4,"onlyB":14,"neither":18,"p":0.0308837890625},{"a":"nvfp4","b":"sol","both":22,"onlyA":4,"onlyB":16,"neither":16,"p":0.01181793212890625},{"a":"terra","b":"sol","both":33,"onlyA":3,"onlyB":5,"neither":17,"p":0.7265625}],"art":[{"a":"qwen","b":"iq3","aHigher":16,"bHigher":24,"ties":0,"p":0.26818725105476915},{"a":"qwen","b":"nvfp4","aHigher":27,"bHigher":10,"ties":3,"p":0.007632078602910042},{"a":"qwen","b":"terra","aHigher":28,"bHigher":12,"ties":0,"p":0.01658900337497471},{"a":"qwen","b":"sol","aHigher":1,"bHigher":39,"ties":0,"p":7.457856554538012e-11},{"a":"iq3","b":"nvfp4","aHigher":31,"bHigher":9,"ties":0,"p":0.0006795482549932785},{"a":"iq3","b":"terra","aHigher":26,"bHigher":13,"ties":1,"p":0.05325191409792751},{"a":"iq3","b":"sol","aHigher":3,"bHigher":36,"ties":1,"p":3.608874976634979e-08},{"a":"nvfp4","b":"terra","aHigher":19,"bHigher":20,"ties":1,"p":1.0},{"a":"nvfp4","b":"sol","aHigher":2,"bHigher":38,"ties":0,"p":1.4933903003111482e-09},{"a":"terra","b":"sol","aHigher":0,"bHigher":39,"ties":1,"p":3.637978807091713e-12}]},"abl":{"qwen":{"pass":28,"timeouts":20,"gdbMedian":440.5,"artMedian":378.0,"score":60.391666666666666,"broken":5},"abl":{"pass":27,"timeouts":17,"gdbMedian":353.5,"artMedian":304.0,"score":59.733333333333334,"broken":4},"rivals":["iq3","terra","sol"],"gdbPair":{"a":"qwen","b":"abl","both":21,"onlyA":7,"onlyB":6,"neither":24,"p":1.0},"artPair":{"a":"qwen","b":"abl","aHigher":26,"bHigher":14,"ties":0,"p":0.0806904677519924}},"creative":[{"task":28,"name":"Parachute off a cliff","group":"SVG Generation","sub":"SVG Images","level":"easy","level_label":"easy","notes":["Qwen IQ4: JS error on load"],"j":{"qwen":[37,35,38,36],"iq3":[76,74,75,72],"nvfp4":[68,67,70,66],"terra":[74,74,77,66],"sol":[79,72,80,75]},"qwen":36.5,"iq3":74.25,"nvfp4":67.75,"terra":72.75,"sol":76.5,"qwen_s":323,"iq3_s":154,"nvfp4_s":54,"terra_s":59,"sol_s":408,"qwen_to":false,"iq3_to":false,"nvfp4_to":false,"terra_to":false,"sol_to":false},{"task":34,"name":"Chess against the computer","group":"Game Development","sub":"Strategy","level":"medium","level_label":"medium","notes":["IQ4 abliterated: hit 1200 s"],"j":{"qwen":[76,74,79,75],"iq3":[77,79,81,79],"nvfp4":[74,76,80,75],"terra":[72,73,76,70],"sol":[79,80,83,81]},"qwen":76.0,"iq3":79.0,"nvfp4":76.25,"terra":72.75,"sol":80.75,"qwen_s":1181,"iq3_s":875,"nvfp4_s":195,"terra_s":84,"sol_s":642,"qwen_to":false,"iq3_to":false,"nvfp4_to":false,"terra_to":false,"sol_to":false},{"task":46,"name":"SIM card","group":"SVG Generation","sub":"SVG Images","level":"easy","level_label":"easy","notes":[],"j":{"qwen":[58,60,61,62],"iq3":[64,67,66,71],"nvfp4":[33,34,36,34],"terra":[76,78,75,76],"sol":[78,81,79,76]},"qwen":60.25,"iq3":67.0,"nvfp4":34.25,"terra":76.25,"sol":78.5,"qwen_s":54,"iq3_s":58,"nvfp4_s":16,"terra_s":30,"sol_s":144,"qwen_to":false,"iq3_to":false,"nvfp4_to":false,"terra_to":false,"sol_to":false},{"task":48,"name":"Character creator","group":"Game Development","sub":"Role-Playing","level":"medium","level_label":"medium","notes":[],"j":{"qwen":[73,71,69,68],"iq3":[60,64,64,65],"nvfp4":[55,58,58,54],"terra":[64,65,65,64],"sol":[75,75,75,76]},"qwen":70.25,"iq3":63.25,"nvfp4":56.25,"terra":64.5,"sol":75.25,"qwen_s":912,"iq3_s":207,"nvfp4_s":46,"terra_s":103,"sol_s":710,"qwen_to":false,"iq3_to":false,"nvfp4_to":false,"terra_to":false,"sol_to":false},{"task":95,"name":"Real-time battle","group":"Game Development","sub":"Action/Rhythm","level":"easy","level_label":"easy","notes":[],"j":{"qwen":[53,49,62,59],"iq3":[73,71,79,80],"nvfp4":[80,80,82,79],"terra":[58,64,59,57],"sol":[79,78,74,76]},"qwen":55.75,"iq3":75.75,"nvfp4":80.25,"terra":59.5,"sol":76.75,"qwen_s":657,"iq3_s":317,"nvfp4_s":653,"terra_s":69,"sol_s":511,"qwen_to":false,"iq3_to":false,"nvfp4_to":false,"terra_to":false,"sol_to":false},{"task":104,"name":"Butterflyfish","group":"SVG Generation","sub":"SVG Images","level":"medium","level_label":"medium","notes":[],"j":{"qwen":[67,66,73,65],"iq3":[80,78,80,67],"nvfp4":[65,68,63,62],"terra":[71,67,69,63],"sol":[81,76,83,83]},"qwen":67.75,"iq3":76.25,"nvfp4":64.5,"terra":67.5,"sol":80.75,"qwen_s":65,"iq3_s":154,"nvfp4_s":21,"terra_s":35,"sol_s":336,"qwen_to":false,"iq3_to":false,"nvfp4_to":false,"terra_to":false,"sol_to":false},{"task":118,"name":"NPC companion commands","group":"Game Development","sub":"Role-Playing","level":"medium","level_label":"medium","notes":[],"j":{"qwen":[67,72,70,67],"iq3":[71,70,78,67],"nvfp4":[66,64,67,66],"terra":[55,63,61,58],"sol":[80,75,80,79]},"qwen":69.0,"iq3":71.5,"nvfp4":65.75,"terra":59.25,"sol":78.5,"qwen_s":961,"iq3_s":621,"nvfp4_s":50,"terra_s":91,"sol_s":699,"qwen_to":false,"iq3_to":false,"nvfp4_to":false,"terra_to":false,"sol_to":false},{"task":119,"name":"Dynamic weather sim","group":"Game Development","sub":"Simulation/Management","level":"easy","level_label":"easy","notes":[],"j":{"qwen":[59,64,61,62],"iq3":[65,71,74,72],"nvfp4":[62,58,63,64],"terra":[54,52,54,54],"sol":[69,69,70,67]},"qwen":61.5,"iq3":70.5,"nvfp4":61.75,"terra":53.5,"sol":68.75,"qwen_s":379,"iq3_s":590,"nvfp4_s":110,"terra_s":119,"sol_s":786,"qwen_to":false,"iq3_to":false,"nvfp4_to":false,"terra_to":false,"sol_to":false},{"task":137,"name":"Ancient ruins adventure","group":"Game Development","sub":"Adventure","level":"medium","level_label":"medium","notes":[],"j":{"qwen":[58,51,60,49],"iq3":[64,64,58,60],"nvfp4":[57,59,63,59],"terra":[47,46,54,52],"sol":[66,72,67,73]},"qwen":54.5,"iq3":61.5,"nvfp4":59.5,"terra":49.75,"sol":69.5,"qwen_s":828,"iq3_s":967,"nvfp4_s":196,"terra_s":121,"sol_s":796,"qwen_to":false,"iq3_to":false,"nvfp4_to":false,"terra_to":false,"sol_to":false},{"task":187,"name":"Drinking at a bar","group":"SVG Generation","sub":"SVG Images","level":"medium","level_label":"medium","notes":["Qwen NVFP4: no page"],"j":{"qwen":[69,73,70,61],"iq3":[64,56,62,62],"nvfp4":[0,0,0,0],"terra":[74,74,69,68],"sol":[81,81,84,84]},"qwen":68.25,"iq3":61.0,"nvfp4":0.0,"terra":71.25,"sol":82.5,"qwen_s":168,"iq3_s":242,"nvfp4_s":40,"terra_s":71,"sol_s":401,"qwen_to":false,"iq3_to":false,"nvfp4_to":false,"terra_to":false,"sol_to":false},{"task":200,"name":"Wheelchair icon","group":"SVG Generation","sub":"SVG Icons/Logos","level":"hard","level_label":"hard","notes":[],"j":{"qwen":[74,72,74,71],"iq3":[71,72,68,67],"nvfp4":[55,65,61,64],"terra":[68,64,66,68],"sol":[64,64,72,69]},"qwen":72.75,"iq3":69.5,"nvfp4":61.25,"terra":66.5,"sol":67.25,"qwen_s":134,"iq3_s":189,"nvfp4_s":14,"terra_s":15,"sol_s":469,"qwen_to":false,"iq3_to":false,"nvfp4_to":false,"terra_to":false,"sol_to":false},{"task":347,"name":"Solar system","group":"Simulation & Modeling","sub":"Physics Simulation","level":"medium","level_label":"medium","notes":[],"j":{"qwen":[75,73,76,73],"iq3":[74,80,76,71],"nvfp4":[65,70,71,68],"terra":[52,48,52,52],"sol":[78,74,79,85]},"qwen":74.25,"iq3":75.25,"nvfp4":68.5,"terra":51.0,"sol":79.0,"qwen_s":178,"iq3_s":369,"nvfp4_s":32,"terra_s":61,"sol_s":406,"qwen_to":false,"iq3_to":false,"nvfp4_to":false,"terra_to":false,"sol_to":false},{"task":362,"name":"Earth rotation and revolution","group":"Simulation & Modeling","sub":"Physics Simulation","level":"medium","level_label":"medium","notes":["Qwen NVFP4: JS error on load"],"j":{"qwen":[61,63,60,55],"iq3":[52,53,55,46],"nvfp4":[20,16,18,14],"terra":[55,59,58,47],"sol":[72,76,73,74]},"qwen":59.75,"iq3":51.5,"nvfp4":17.0,"terra":54.75,"sol":73.75,"qwen_s":354,"iq3_s":196,"nvfp4_s":134,"terra_s":71,"sol_s":960,"qwen_to":false,"iq3_to":false,"nvfp4_to":false,"terra_to":false,"sol_to":false},{"task":373,"name":"Solar system in motion","group":"Simulation & Modeling","sub":"3D Simulation","level":"medium","level_label":"medium","notes":[],"j":{"qwen":[64,69,69,66],"iq3":[65,66,70,64],"nvfp4":[68,62,73,66],"terra":[59,64,69,60],"sol":[76,74,74,82]},"qwen":67.0,"iq3":66.25,"nvfp4":67.25,"terra":63.0,"sol":76.5,"qwen_s":141,"iq3_s":160,"nvfp4_s":38,"terra_s":58,"sol_s":501,"qwen_to":false,"iq3_to":false,"nvfp4_to":false,"terra_to":false,"sol_to":false},{"task":380,"name":"Nezha anime page","group":"Web Applications","sub":"Web Visuals","level":"easy","level_label":"easy","notes":["Sol vs IQ4 abliterated round rejudged"],"j":{"qwen":[57,68,65,59],"iq3":[59,67,70,61],"nvfp4":[57,60,65,55],"terra":[55,56,57,54],"sol":[68,69,67,72]},"qwen":62.25,"iq3":64.25,"nvfp4":59.25,"terra":55.5,"sol":69.0,"qwen_s":371,"iq3_s":340,"nvfp4_s":55,"terra_s":108,"sol_s":1021,"qwen_to":false,"iq3_to":false,"nvfp4_to":false,"terra_to":false,"sol_to":false},{"task":394,"name":"Earth-Moon orbits","group":"Simulation & Modeling","sub":"Physics Simulation","level":"medium","level_label":"medium","notes":["Qwen NVFP4: no page"],"j":{"qwen":[72,67,67,67],"iq3":[66,60,65,58],"nvfp4":[0,0,0,0],"terra":[59,58,60,59],"sol":[72,71,71,75]},"qwen":68.25,"iq3":62.25,"nvfp4":0.0,"terra":59.0,"sol":72.25,"qwen_s":108,"iq3_s":117,"nvfp4_s":27,"terra_s":57,"sol_s":419,"qwen_to":false,"iq3_to":false,"nvfp4_to":false,"terra_to":false,"sol_to":false},{"task":414,"name":"3D battle-royale shooter","group":"Game Development","sub":"Shooting","level":"hard","level_label":"hard","notes":["Qwen IQ4: hit 1200 s","IQ4 abliterated: JS error on load"],"j":{"qwen":[60,58,67,61],"iq3":[42,44,60,42],"nvfp4":[54,61,65,58],"terra":[48,50,51,50],"sol":[73,74,71,77]},"qwen":61.5,"iq3":47.0,"nvfp4":59.5,"terra":49.75,"sol":73.75,"qwen_s":1200,"iq3_s":972,"nvfp4_s":244,"terra_s":87,"sol_s":927,"qwen_to":true,"iq3_to":false,"nvfp4_to":false,"terra_to":false,"sol_to":false},{"task":423,"name":"Open-world joystick game","group":"Game Development","sub":"Action/Rhythm","level":"hard","level_label":"hard","notes":["Qwen IQ4: hit 1200 s","Qwen IQ3: hit 1200 s","Qwen IQ3: JS error on load","Qwen NVFP4: hit 1200 s"],"j":{"qwen":[54,72,69,62],"iq3":[21,70,24,29],"nvfp4":[66,50,68,55],"terra":[60,58,58,59],"sol":[77,72,73,78]},"qwen":64.25,"iq3":36.0,"nvfp4":59.75,"terra":58.75,"sol":75.0,"qwen_s":1200,"iq3_s":1200,"nvfp4_s":1200,"terra_s":114,"sol_s":1059,"qwen_to":true,"iq3_to":true,"nvfp4_to":true,"terra_to":false,"sol_to":false},{"task":429,"name":"Space flight with gravity","group":"Game Development","sub":"Simulation/Management","level":"medium","level_label":"medium","notes":[],"j":{"qwen":[68,68,70,68],"iq3":[70,64,77,63],"nvfp4":[68,59,72,62],"terra":[58,68,61,55],"sol":[82,83,78,79]},"qwen":68.5,"iq3":68.5,"nvfp4":65.25,"terra":60.5,"sol":80.5,"qwen_s":581,"iq3_s":320,"nvfp4_s":144,"terra_s":74,"sol_s":965,"qwen_to":false,"iq3_to":false,"nvfp4_to":false,"terra_to":false,"sol_to":false},{"task":458,"name":"Two-faction auto battler","group":"Game Development","sub":"Strategy","level":"hard","level_label":"hard","notes":["Qwen IQ4: no page","Qwen IQ3: hit 1200 s"],"j":{"qwen":[0,0,0,0],"iq3":[41,36,40,38],"nvfp4":[66,64,70,68],"terra":[67,66,66,62],"sol":[74,73,76,76]},"qwen":0.0,"iq3":38.75,"nvfp4":67.0,"terra":65.25,"sol":74.75,"qwen_s":340,"iq3_s":1200,"nvfp4_s":127,"terra_s":90,"sol_s":668,"qwen_to":false,"iq3_to":true,"nvfp4_to":false,"terra_to":false,"sol_to":false},{"task":695,"name":"Seeded roguelike shooter","group":"Game Development","sub":"Shooting","level":"hard","level_label":"hard","notes":["Qwen IQ4: hit 1200 s","IQ4 abliterated: hit 1200 s"],"j":{"qwen":[75,72,75,67],"iq3":[80,77,79,77],"nvfp4":[70,66,73,69],"terra":[74,67,74,64],"sol":[81,84,81,82]},"qwen":72.25,"iq3":78.25,"nvfp4":69.5,"terra":69.75,"sol":82.0,"qwen_s":1200,"iq3_s":731,"nvfp4_s":187,"terra_s":95,"sol_s":907,"qwen_to":true,"iq3_to":false,"nvfp4_to":false,"terra_to":false,"sol_to":false},{"task":986,"name":"Fruit Tetris","group":"Game Development","sub":"Puzzle","level":"medium","level_label":"medium","notes":[],"j":{"qwen":[63,63,65,60],"iq3":[75,70,81,72],"nvfp4":[67,65,72,63],"terra":[66,66,67,65],"sol":[83,86,82,86]},"qwen":62.75,"iq3":74.5,"nvfp4":66.75,"terra":66.0,"sol":84.25,"qwen_s":377,"iq3_s":311,"nvfp4_s":38,"terra_s":68,"sol_s":648,"qwen_to":false,"iq3_to":false,"nvfp4_to":false,"terra_to":false,"sol_to":false},{"task":1013,"name":"Racing game","group":"Game Development","sub":"Sports","level":"medium","level_label":"medium","notes":[],"j":{"qwen":[75,75,79,71],"iq3":[76,73,80,70],"nvfp4":[70,71,79,67],"terra":[62,67,73,63],"sol":[82,83,86,86]},"qwen":75.0,"iq3":74.75,"nvfp4":71.75,"terra":66.25,"sol":84.25,"qwen_s":732,"iq3_s":712,"nvfp4_s":53,"terra_s":72,"sol_s":759,"qwen_to":false,"iq3_to":false,"nvfp4_to":false,"terra_to":false,"sol_to":false},{"task":1036,"name":"Mobile Tetris","group":"Game Development","sub":"Puzzle","level":"hard","level_label":"hard","notes":[],"j":{"qwen":[54,60,61,61],"iq3":[60,63,72,58],"nvfp4":[60,58,65,57],"terra":[59,62,65,58],"sol":[70,64,67,67]},"qwen":59.0,"iq3":63.25,"nvfp4":60.0,"terra":61.0,"sol":67.0,"qwen_s":493,"iq3_s":436,"nvfp4_s":68,"terra_s":54,"sol_s":623,"qwen_to":false,"iq3_to":false,"nvfp4_to":false,"terra_to":false,"sol_to":false},{"task":1199,"name":"Snake","group":"Game Development","sub":"Action/Rhythm","level":"easy","level_label":"easy","notes":[],"j":{"qwen":[63,67,65,61],"iq3":[74,74,74,70],"nvfp4":[66,67,63,62],"terra":[74,72,72,70],"sol":[83,84,84,84]},"qwen":64.0,"iq3":73.0,"nvfp4":64.5,"terra":72.0,"sol":83.75,"qwen_s":74,"iq3_s":60,"nvfp4_s":23,"terra_s":57,"sol_s":407,"qwen_to":false,"iq3_to":false,"nvfp4_to":false,"terra_to":false,"sol_to":false},{"task":1202,"name":"Editable prize wheel","group":"Game Development","sub":"Casual","level":"easy","level_label":"easy","notes":["IQ4 abliterated: JS error on load"],"j":{"qwen":[81,82,81,77],"iq3":[71,77,74,72],"nvfp4":[71,74,75,73],"terra":[73,74,76,69],"sol":[82,85,84,88]},"qwen":80.25,"iq3":73.5,"nvfp4":73.25,"terra":73.0,"sol":84.75,"qwen_s":426,"iq3_s":160,"nvfp4_s":32,"terra_s":64,"sol_s":428,"qwen_to":false,"iq3_to":false,"nvfp4_to":false,"terra_to":false,"sol_to":false},{"task":1255,"name":"Mapbox GL in React","group":"Web Applications","sub":"Web Visuals","level":"easy","level_label":"easy","notes":["Qwen IQ4: JS error on load","Qwen IQ4: loads CDN scripts","Qwen IQ3: JS error on load","Qwen IQ3: loads CDN scripts","Qwen NVFP4: loads CDN scripts","Terra: loads CDN scripts","IQ4 abliterated: loads CDN scripts"],"j":{"qwen":[57,37,24,38],"iq3":[64,39,31,53],"nvfp4":[72,67,73,63],"terra":[61,61,58,61],"sol":[64,67,61,68]},"qwen":39.0,"iq3":46.75,"nvfp4":68.75,"terra":60.25,"sol":65.0,"qwen_s":164,"iq3_s":166,"nvfp4_s":115,"terra_s":72,"sol_s":702,"qwen_to":false,"iq3_to":false,"nvfp4_to":false,"terra_to":false,"sol_to":false},{"task":1377,"name":"Minecraft End City","group":"SVG Generation","sub":"SVG Images","level":"hard","level_label":"hard","notes":["Qwen IQ3: JS error on load"],"j":{"qwen":[73,70,71,67],"iq3":[48,47,44,36],"nvfp4":[60,60,62,55],"terra":[62,64,65,63],"sol":[82,82,84,85]},"qwen":70.25,"iq3":43.75,"nvfp4":59.25,"terra":63.5,"sol":83.25,"qwen_s":752,"iq3_s":300,"nvfp4_s":162,"terra_s":71,"sol_s":517,"qwen_to":false,"iq3_to":false,"nvfp4_to":false,"terra_to":false,"sol_to":false},{"task":1445,"name":"Football lineup builder","group":"Game Development","sub":"Sports","level":"medium","level_label":"medium","notes":["Qwen NVFP4: no page"],"j":{"qwen":[65,64,61,59],"iq3":[62,57,58,58],"nvfp4":[0,0,0,0],"terra":[67,65,68,59],"sol":[72,72,72,72]},"qwen":62.25,"iq3":58.75,"nvfp4":0.0,"terra":64.75,"sol":72.0,"qwen_s":325,"iq3_s":162,"nvfp4_s":2,"terra_s":75,"sol_s":575,"qwen_to":false,"iq3_to":false,"nvfp4_to":false,"terra_to":false,"sol_to":false},{"task":1462,"name":"Plants vs. Zombies, Naruto edition","group":"Game Development","sub":"Strategy","level":"hard","level_label":"hard","notes":[],"j":{"qwen":[56,59,60,62],"iq3":[68,67,76,65],"nvfp4":[43,54,44,45],"terra":[57,54,57,51],"sol":[76,71,67,74]},"qwen":59.25,"iq3":69.0,"nvfp4":46.5,"terra":54.75,"sol":72.0,"qwen_s":482,"iq3_s":722,"nvfp4_s":106,"terra_s":99,"sol_s":708,"qwen_to":false,"iq3_to":false,"nvfp4_to":false,"terra_to":false,"sol_to":false},{"task":1543,"name":"Chess board","group":"Game Development","sub":"Strategy","level":"easy","level_label":"easy","notes":[],"j":{"qwen":[55,61,55,55],"iq3":[80,83,82,81],"nvfp4":[82,78,68,78],"terra":[73,66,70,68],"sol":[84,84,85,86]},"qwen":56.5,"iq3":81.5,"nvfp4":76.5,"terra":69.25,"sol":84.75,"qwen_s":261,"iq3_s":653,"nvfp4_s":54,"terra_s":70,"sol_s":511,"qwen_to":false,"iq3_to":false,"nvfp4_to":false,"terra_to":false,"sol_to":false},{"task":1547,"name":"Scrollbar idle game","group":"Game Development","sub":"Casual","level":"medium","level_label":"medium","notes":[],"j":{"qwen":[76,76,79,73],"iq3":[75,74,76,75],"nvfp4":[75,75,79,74],"terra":[66,68,67,65],"sol":[81,80,78,81]},"qwen":76.0,"iq3":75.0,"nvfp4":75.75,"terra":66.5,"sol":80.0,"qwen_s":505,"iq3_s":434,"nvfp4_s":64,"terra_s":71,"sol_s":648,"qwen_to":false,"iq3_to":false,"nvfp4_to":false,"terra_to":false,"sol_to":false},{"task":1568,"name":"FEA nodal animation","group":"Simulation & Modeling","sub":"3D Simulation","level":"hard","level_label":"hard","notes":["Qwen IQ4: hit 1200 s","Qwen IQ4: JS error on load","Qwen IQ4: loads CDN scripts","Qwen IQ3: CDN library fails to load","Qwen IQ3: loads CDN scripts","Qwen NVFP4: CDN library fails to load","Qwen NVFP4: loads CDN scripts","IQ4 abliterated: no page"],"j":{"qwen":[13,9,8,9],"iq3":[32,49,30,24],"nvfp4":[53,38,35,46],"terra":[67,66,67,57],"sol":[77,74,77,77]},"qwen":9.75,"iq3":33.75,"nvfp4":43.0,"terra":64.25,"sol":76.25,"qwen_s":1200,"iq3_s":1056,"nvfp4_s":386,"terra_s":108,"sol_s":748,"qwen_to":true,"iq3_to":false,"nvfp4_to":false,"terra_to":false,"sol_to":false},{"task":1588,"name":"ESP32 button page","group":"Web Applications","sub":"Web Visuals","level":"easy","level_label":"easy","notes":[],"j":{"qwen":[58,61,64,61],"iq3":[68,70,70,63],"nvfp4":[46,43,48,46],"terra":[62,60,58,59],"sol":[68,68,64,66]},"qwen":61.0,"iq3":67.75,"nvfp4":45.75,"terra":59.75,"sol":66.5,"qwen_s":62,"iq3_s":60,"nvfp4_s":15,"terra_s":26,"sol_s":296,"qwen_to":false,"iq3_to":false,"nvfp4_to":false,"terra_to":false,"sol_to":false},{"task":1697,"name":"Indoor 3D path planning","group":"Simulation & Modeling","sub":"3D Simulation","level":"hard","level_label":"hard","notes":["Qwen IQ4: no page","Qwen NVFP4: hit 1200 s"],"j":{"qwen":[0,0,0,0],"iq3":[57,55,62,54],"nvfp4":[54,61,65,58],"terra":[44,47,47,43],"sol":[54,59,62,62]},"qwen":0.0,"iq3":57.0,"nvfp4":59.5,"terra":45.25,"sol":59.25,"qwen_s":1200,"iq3_s":757,"nvfp4_s":1200,"terra_s":88,"sol_s":833,"qwen_to":true,"iq3_to":false,"nvfp4_to":true,"terra_to":false,"sol_to":false},{"task":1710,"name":"Tile-matching puzzle","group":"Game Development","sub":"Puzzle","level":"hard","level_label":"hard","notes":[],"j":{"qwen":[80,78,80,77],"iq3":[74,74,74,66],"nvfp4":[72,46,71,74],"terra":[71,75,72,70],"sol":[85,84,85,86]},"qwen":78.75,"iq3":72.0,"nvfp4":65.75,"terra":72.0,"sol":85.0,"qwen_s":1120,"iq3_s":394,"nvfp4_s":75,"terra_s":102,"sol_s":813,"qwen_to":false,"iq3_to":false,"nvfp4_to":false,"terra_to":false,"sol_to":false},{"task":1762,"name":"Sudoku","group":"Game Development","sub":"Puzzle","level":"easy","level_label":"easy","notes":[],"j":{"qwen":[67,76,76,71],"iq3":[54,54,52,56],"nvfp4":[79,78,77,72],"terra":[71,69,69,69],"sol":[74,81,78,76]},"qwen":72.5,"iq3":54.0,"nvfp4":76.5,"terra":69.5,"sol":77.25,"qwen_s":87,"iq3_s":71,"nvfp4_s":31,"terra_s":41,"sol_s":247,"qwen_to":false,"iq3_to":false,"nvfp4_to":false,"terra_to":false,"sol_to":false},{"task":1768,"name":"Semiconductor lesson game","group":"Game Development","sub":"Casual","level":"easy","level_label":"easy","notes":["IQ4 abliterated: JS error on load"],"j":{"qwen":[71,72,72,66],"iq3":[59,58,58,68],"nvfp4":[66,67,69,62],"terra":[55,53,52,54],"sol":[80,78,76,82]},"qwen":70.25,"iq3":60.75,"nvfp4":66.0,"terra":53.5,"sol":79.0,"qwen_s":516,"iq3_s":387,"nvfp4_s":62,"terra_s":96,"sol_s":762,"qwen_to":false,"iq3_to":false,"nvfp4_to":false,"terra_to":false,"sol_to":false},{"task":1813,"name":"Bilingual match-3","group":"Game Development","sub":"Puzzle","level":"hard","level_label":"hard","notes":[],"j":{"qwen":[70,71,70,70],"iq3":[67,70,75,70],"nvfp4":[67,65,65,63],"terra":[65,73,70,60],"sol":[85,83,84,82]},"qwen":70.25,"iq3":70.5,"nvfp4":65.0,"terra":67.0,"sol":83.5,"qwen_s":275,"iq3_s":254,"nvfp4_s":46,"terra_s":96,"sol_s":805,"qwen_to":false,"iq3_to":false,"nvfp4_to":false,"terra_to":false,"sol_to":false},{"task":1824,"name":"Dancing dog","group":"Web Applications","sub":"Web Visuals","level":"easy","level_label":"easy","notes":[],"j":{"qwen":[69,64,63,64],"iq3":[70,68,60,61],"nvfp4":[61,59,62,52],"terra":[73,71,71,69],"sol":[83,86,83,86]},"qwen":65.0,"iq3":64.75,"nvfp4":58.5,"terra":71.0,"sol":84.5,"qwen_s":103,"iq3_s":101,"nvfp4_s":36,"terra_s":52,"sol_s":425,"qwen_to":false,"iq3_to":false,"nvfp4_to":false,"terra_to":false,"sol_to":false}]}</script>
+<script>
+window.L = {
+  sec: v => `${v} s`,
+  listSep: '; ',
+  setup: { qwen: 'PI, medium', iq3: 'PI, medium', nvfp4: 'PI, medium', terra: 'Codex, xhigh', sol: 'Codex, xhigh' },
+  astraShort: 'Astra (pub.)',
+  astraLong: 'GPT 6 Astra · published',
+  abl: {
+    short: 'IQ4 abl.', long: 'IQ4 abliterated · reference',
+    rows: {
+      pass: 'Godot tasks passed', timeouts: 'Godot tasks that hit the 600 s limit', gdbTime: 'Godot median time per task',
+      score: 'Creative score against IQ3, Terra and Sol', artTime: 'Creative median time per page', broken: 'Broken creative pages',
+    },
+    pairs: (onlyN, onlyA, pg, higherN, higherA, ties, pa) => `On Godot, ${onlyN} tasks only the normal build solved and ${onlyA} only the abliterated one (McNemar p = ${pg}). Judged side by side, the normal build scored higher on ${higherN} creative tasks and the abliterated one on ${higherA}${ties ? `, with ${ties} ties` : ''} (sign test p = ${pa}).`,
+  },
+  matrix: { corner: 'Row vs column' },
+  passedOf: (p, n) => `${p} of ${n} passed`,
+  intervals: { label: 'Pass rate with 95% intervals', ci: '95% interval' },
+  effort: {
+    label: 'IQ4 effort check on 8 tasks', highest: 'Highest', medium: 'Medium', what: 'effort',
+    timeouts: n => `${n} out of time`, passed: n => `${n} passed`,
+  },
+  h2h: {
+    vs: (a, b) => `${a} vs ${b}`, both: 'both passed', only: a => `only ${a}`, neither: 'neither',
+    higher: a => `${a} higher`, tie: 'tie', sign: 'sign test',
+  },
+  task: t => `Task ${t}`,
+  result: (ok, time, timedOut) => `${ok ? 'pass' : 'fail'}, ${timedOut ? 'hit the 600 s limit' : time}`,
+  pass: 'pass',
+  fail: 'fail',
+  astraRun: 'published Astra run',
+  timedOut: t => `${t}, timed out`,
+  nTasks: n => `${n} tasks`,
+  judged: (name, j) => `${name}, judged ${j.join(', ')}`,
+  groups: { games: 'Games', svg: 'SVG', sim: 'Simulations', web: 'Web visuals' },
+  levels: { easy: 'Easy', medium: 'Medium', hard: 'Hard' },
+  allTasks: 'All tasks',
+  byCategory: 'BY CATEGORY',
+  byLevel: 'BY DIFFICULTY',
+  scoreRows: { label: 'Mean creative score by category and difficulty' },
+  timeRows: {
+    allGdb: 'All 58 tasks', allArt: 'All 40 pages', byPassed: 'BY HOW MANY PASSED',
+    passed: (k, n) => k === n ? `All ${n} passed` : k === 0 ? 'None passed' : `${k} of ${n} passed`,
+    gdbLabel: 'Godot median time by how many setups passed', artLabel: 'Creative median time by category and difficulty',
+  },
+  trade: {
+    gdb: { label: 'Godot pass rate against median time per task', what: 'of tasks passed', timeWhat: 'median per task', xTitle: 'Median time per task' },
+    art: { label: 'Creative mean score against median time per page', what: 'mean score', timeWhat: 'median per page', xTitle: 'Median time per page' },
+  },
+  finish: {
+    limit: 'Time limit',
+    gdbLabel: 'Share of Godot tasks finished by a given time',
+    artLabel: 'Share of creative pages finished by a given time',
+    median: (name, t) => `${name} · median ${t}`,
+    within: t => `Within ${t} s`,
+    finished: name => `${name} finished`,
+    summary: (name, done, n, med) => `${name} finished ${done} of ${n}, median ${med}`,
+    aria: (label, parts) => `${label}. ${parts.join('; ')}. Use the left and right arrow keys to move in time.`,
+  },
+};
+</script>
+<script>
+(() => {
+  // Shared by the English and Chinese pages. Every user-facing string comes from
+  // window.L, which each page's template defines.
+  const D = JSON.parse(document.getElementById('data').textContent);
+  const L = window.L;
+  const NS = 'http://www.w3.org/2000/svg';
+  const N = D.gdb.length;
+  // Setups come from the data in display order; colour classes are keyed by setup.
+  const MODELS = D.models.map(m => ({ ...m, cls: m.key }));
+  const BY_KEY = Object.fromEntries(MODELS.map(m => [m.key, m]));
+  const xTicks = [0, 25, 50, 75, 100];
+
+  function el(tag, attrs, parent) {
+    const node = document.createElementNS(NS, tag);
+    for (const [k, v] of Object.entries(attrs || {})) node.setAttribute(k, v);
+    if (parent) parent.appendChild(node);
+    return node;
+  }
+  function text(parent, x, y, s, cls, anchor) {
+    const t = el('text', { x, y, class: cls || 't-ink', 'text-anchor': anchor || 'start' }, parent);
+    t.textContent = s;
+    return t;
+  }
+  function svgFor(box, W, H, label) {
+    const svg = el('svg', { width: W, height: H, viewBox: `0 0 ${W} ${H}`, role: 'group', 'aria-label': label });
+    box.replaceChildren(svg);  // attached first so label boxes can be measured
+    return svg;
+  }
+  function html(tag, cls, parent, content) {
+    const node = document.createElement(tag);
+    if (cls) node.className = cls;
+    if (content !== undefined) node.textContent = content;
+    if (parent) parent.appendChild(node);
+    return node;
+  }
+  const median = values => {
+    const s = [...values].sort((a, b) => a - b), m = s.length >> 1;
+    return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2;
+  };
+  const mean = (rows, k) => rows.reduce((a, r) => a + r[k], 0) / rows.length;
+  const score = v => Number.isInteger(v) ? String(v) : v.toFixed(1);
+  // Values near 0.05 keep a third digit, so a cell just above the cutoff never reads as exactly 0.05.
+  const pValue = p => p < 0.001 ? '< 0.001' : p < 0.01 || (p > 0.04 && p < 0.06) ? p.toFixed(3) : p.toFixed(2);
+  const sec = v => L.sec(Math.round(v));
+
+  // One tooltip for the whole page: value first, label second.
+  const tip = document.getElementById('tip');
+  function placeTip(x, y) {
+    const w = tip.offsetWidth, h = tip.offsetHeight;
+    let left = x + 14, top = y - h - 12;
+    if (left + w > innerWidth - 8) left = Math.max(8, x - w - 14);
+    if (top < 8) top = y + 18;
+    tip.style.left = left + 'px';
+    tip.style.top = top + 'px';
+  }
+  function showTip(lines, x, y) {
+    tip.replaceChildren();
+    for (const [value, label] of lines) {
+      const row = html('div', '', tip);
+      html('strong', '', row, value);
+      if (label) html('span', '', row, ' ' + label);
+    }
+    tip.hidden = false;
+    placeTip(x, y);
+  }
+  const hideTip = () => { tip.hidden = true; };
+  function bind(node, lines) {
+    node.setAttribute('tabindex', '0');
+    node.setAttribute('role', 'img');
+    node.setAttribute('aria-label', lines.map(l => l.filter(Boolean).join(' ')).join(L.listSep));
+    node.addEventListener('pointerenter', e => showTip(lines, e.clientX, e.clientY));
+    node.addEventListener('pointermove', e => placeTip(e.clientX, e.clientY));
+    node.addEventListener('pointerleave', hideTip);
+    node.addEventListener('focus', () => {
+      const r = node.getBoundingClientRect();
+      showTip(lines, r.left + r.width / 2, r.top);
+    });
+    node.addEventListener('blur', hideTip);
+  }
+  addEventListener('scroll', hideTip, { passive: true });
+
+  // Put a label at the first spot that stays in bounds and clears every obstacle.
+  // Failing that, take the first in-bounds spot that at least clears the other labels.
+  function placeLabel(lab, cx, cy, spots, bounds, dots, labels) {
+    const hits = (a, b) => !(a.x + a.width + 2 < b.x || b.x + b.width + 2 < a.x || a.y + a.height + 2 < b.y || b.y + b.height + 2 < a.y);
+    const tries = spots.map(([dx, dy, anchor]) => {
+      lab.setAttribute('x', cx + dx);
+      lab.setAttribute('y', cy + dy);
+      lab.setAttribute('text-anchor', anchor);
+      const b = lab.getBBox();
+      const inside = b.x >= bounds.x0 && b.x + b.width <= bounds.x1 && b.y >= bounds.y0 && b.y + b.height <= bounds.y1;
+      return { spot: [dx, dy, anchor], inside, clearLabels: !labels.some(o => hits(b, o)), clearDots: !dots.some(o => hits(b, o)) };
+    });
+    const pick = tries.find(t => t.inside && t.clearLabels && t.clearDots)
+      || tries.find(t => t.inside && t.clearLabels) || tries.find(t => t.inside) || tries[0];
+    const [dx, dy, anchor] = pick.spot;
+    lab.setAttribute('x', cx + dx);
+    lab.setAttribute('y', cy + dy);
+    lab.setAttribute('text-anchor', anchor);
+    return lab.getBBox();
+  }
+  const dotBox = (x, y, r) => ({ x: x - r, y: y - r, width: 2 * r, height: 2 * r });
+  // Axis ticks that fit: keep the last tick, then walk back keeping only ticks at least
+  // minGap pixels from the one kept after them.
+  function fitTicks(ticks, x, minGap) {
+    const kept = [ticks[ticks.length - 1]];
+    for (let i = ticks.length - 2; i >= 0; i--) {
+      if (x(kept[0]) - x(ticks[i]) >= minGap) kept.unshift(ticks[i]);
+    }
+    return kept;
+  }
+
+  function drawIntervals(box) {
+    const W = box.clientWidth, narrow = W < 560;
+    const left = narrow ? 104 : 200, right = 18, rowH = 48, top = 4, axisH = 26;
+    const rows = [
+      ...MODELS.map(m => ({ key: m.key, cls: m.cls, name: narrow ? m.name : `${m.name} · ${L.setup[m.key]}` })),
+      { key: 'abl', cls: 'abl', name: narrow ? L.abl.short : L.abl.long },
+      { key: 'astra', cls: 'ref', name: narrow ? L.astraShort : L.astraLong },
+    ].filter(r => D.intervals[r.key]);
+    const H = top + rows.length * rowH + axisH;
+    const svg = svgFor(box, W, H, L.intervals.label);
+    const x = v => left + (W - left - right) * v / 100;
+    for (const t of xTicks) {
+      el('line', { x1: x(t), x2: x(t), y1: top, y2: top + rows.length * rowH, class: t === 0 ? 'axis-l' : 'grid-l' }, svg);
+      text(svg, x(t), H - 6, t + '%', 't-mute tick', t === 0 ? 'start' : t === 100 ? 'end' : 'middle');
+    }
+    rows.forEach((r, i) => {
+      const y = top + i * rowH + rowH / 2;
+      const passed = D.gdb.filter(t => t[r.key]).length, rate = 100 * passed / N;
+      const [lo, hi] = D.intervals[r.key];
+      text(svg, 0, y - 2, r.name, 't-ink lab');
+      text(svg, 0, y + 14, L.passedOf(passed, N), 't-2 sm');
+      el('line', { x1: x(lo), x2: x(hi), y1: y, y2: y, class: `ci s-${r.cls}` }, svg);
+      for (const v of [lo, hi]) el('line', { x1: x(v), x2: x(v), y1: y - 6, y2: y + 6, class: `ci s-${r.cls}` }, svg);
+      el('circle', { cx: x(rate), cy: y, r: 6.5, class: `f-${r.cls} ring` }, svg);
+      text(svg, x(hi) + 10, y + 4.5, rate.toFixed(1) + '%', 't-ink val');
+      const hit = el('rect', { x: 0, y: y - rowH / 2, width: W, height: rowH, class: 'hit' }, svg);
+      bind(hit, [[rate.toFixed(1) + '%', r.name], [`${lo}–${hi}%`, L.intervals.ci], [L.passedOf(passed, N)]]);
+    });
+  }
+
+  function drawEffort(box) {
+    // First 8 sampled tasks: Qwen at its highest setting vs medium.
+    const W = box.clientWidth, left = 92, right = 18, rowH = 36, axisH = 22;
+    const rows = [
+      { name: L.effort.highest, passed: 3, timeouts: 6 },
+      { name: L.effort.medium, passed: 3, timeouts: 2 },
+    ];
+    const H = rows.length * rowH + axisH;
+    const svg = svgFor(box, W, H, L.effort.label);
+    const x = v => left + (W - left - right) * v / 8;
+    for (let t = 0; t <= 8; t += 2) {
+      el('line', { x1: x(t), x2: x(t), y1: 0, y2: rows.length * rowH, class: t === 0 ? 'axis-l' : 'grid-l' }, svg);
+      text(svg, x(t), H - 4, String(t), 't-mute tick', t === 0 ? 'start' : t === 8 ? 'end' : 'middle');
+    }
+    rows.forEach((r, i) => {
+      const y = i * rowH + rowH / 2;
+      text(svg, 0, y + 4.5, r.name, 't-ink lab');
+      // Bars are counts of tasks: timeouts (ink) and passes (Qwen blue) as two thin bars.
+      const bar = (v, dy, cls) => el('path', { d: barPath(x(0), y + dy - 5, x(v) - x(0), 10), class: cls }, svg);
+      bar(r.timeouts, -7, 't-2');
+      bar(r.passed, 7, 'f-qwen');
+      text(svg, x(r.timeouts) + 6, y - 3, L.effort.timeouts(r.timeouts), 't-2 sm');
+      text(svg, x(r.passed) + 6, y + 11, L.effort.passed(r.passed), 't-2 sm');
+      const hit = el('rect', { x: 0, y: y - rowH / 2, width: W, height: rowH, class: 'hit' }, svg);
+      bind(hit, [[L.effort.passed(r.passed)], [L.effort.timeouts(r.timeouts)], [r.name, L.effort.what]]);
+    });
+  }
+  function barPath(x0, y, w, h) {
+    // Square at the baseline, 4px rounded data end.
+    const r = Math.min(4, w / 2, h / 2);
+    return `M${x0},${y}H${x0 + w - r}Q${x0 + w},${y} ${x0 + w},${y + r}V${y + h - r}Q${x0 + w},${y + h} ${x0 + w - r},${y + h}H${x0}Z`;
+  }
+
+  // Head-to-head as a matrix: the row setup against the column setup, written as
+  // "row wins - column wins" from the pair's own comparison. Five setups cannot all be told
+  // apart by colour side by side, so the matrix carries identity in its labels.
+  function drawMatrix(id, pairs, kind) {
+    const table = document.getElementById(id);
+    const find = (a, b) => {
+      const p = pairs.find(x => x.a === a && x.b === b);
+      if (p) return { p, flip: false };
+      const q = pairs.find(x => x.a === b && x.b === a);
+      return q ? { p: q, flip: true } : null;
+    };
+    const head = html('tr', '', html('thead', '', table));
+    html('th', '', head, L.matrix.corner);
+    for (const m of MODELS) {
+      const th = html('th', '', head);
+      const span = html('span', '', th);
+      html('i', `key ${m.k}`, span);
+      span.append(m.name);
+    }
+    const body = html('tbody', '', table);
+    for (const row of MODELS) {
+      const tr = html('tr', '', body);
+      const th = html('th', '', tr);
+      th.setAttribute('scope', 'row');
+      const span = html('span', '', th);
+      html('i', `key ${row.k}`, span);
+      span.append(row.name);
+      for (const col of MODELS) {
+        if (row === col) { html('td', 'self', tr, '—'); continue; }
+        const found = find(row.key, col.key);
+        if (!found) { html('td', 'self', tr, ''); continue; }
+        const { p, flip } = found;
+        const [win, loss] = kind === 'gdb'
+          ? (flip ? [p.onlyB, p.onlyA] : [p.onlyA, p.onlyB])
+          : (flip ? [p.bHigher, p.aHigher] : [p.aHigher, p.bHigher]);
+        const td = html('td', p.p < 0.05 ? 'clear' : '', tr);
+        html('b', '', td, `${win}–${loss}`);
+        html('small', '', td, `p ${p.p < 0.001 ? '' : '= '}${pValue(p.p)}`);
+        const test = kind === 'gdb' ? 'McNemar' : L.h2h.sign;
+        bind(td, kind === 'gdb'
+          ? [[L.h2h.vs(row.name, col.name)], [String(win), L.h2h.only(row.name)], [String(loss), L.h2h.only(col.name)],
+            [String(p.both), L.h2h.both], [String(p.neither), L.h2h.neither], [pValue(p.p), `${test} p`]]
+          : [[L.h2h.vs(row.name, col.name)], [String(win), L.h2h.higher(row.name)], [String(loss), L.h2h.higher(col.name)],
+            [String(p.ties), L.h2h.tie], [pValue(p.p), `${test} p`]]);
+      }
+    }
+  }
+
+  function drawCells() {
+    const box = document.getElementById('c-cells');
+    for (const r of D.gdb) {
+      const cell = html('div', 'cell' + (MODELS.some(m => r[m.key + '_to']) ? ' to' : ''), box);
+      html('span', '', cell, r.task);
+      const pips = html('span', 'pips', cell);
+      for (const m of MODELS) html('i', `pip ${m.k}` + (r[m.key] ? ' on' : ''), pips);
+      bind(cell, [[L.task(r.task)], ...MODELS.map(m => [L.result(r[m.key], sec(r[m.key + '_s']), r[m.key + '_to']), m.name]), [r.astra ? L.pass : L.fail, L.astraRun]]);
+    }
+  }
+
+  // Rows of dots, one per setup, joined by their range. Each setup has its own 8px lane
+  // inside the row, so setups with equal values never hide each other.
+  function dotRows(box, spec, o) {
+    const lane = 8, rowH = Math.max(32, MODELS.length * lane + 8);
+    const W = box.clientWidth, left = W < 420 ? 108 : 150, right = 16, sepH = 28, top = 6, axisH = 24;
+    let H = top;
+    for (const s of spec) H += s.sep ? sepH : rowH;
+    const plotBottom = H;
+    H += axisH;
+    const svg = svgFor(box, W, H, o.label);
+    const x = v => left + (W - left - right) * v / o.max;
+    for (const t of o.ticks) {
+      el('line', { x1: x(t), x2: x(t), y1: top, y2: plotBottom, class: t === 0 ? 'axis-l' : 'grid-l' }, svg);
+    }
+    for (const t of fitTicks(o.ticks, x, 52)) {
+      text(svg, x(t), H - 4, t === o.max && o.unit ? o.unit(t) : String(t), 't-mute tick', t === 0 ? 'start' : t === o.max ? 'end' : 'middle');
+    }
+    let y = top;
+    for (const s of spec) {
+      if (s.sep) {
+        text(svg, 0, y + sepH - 9, s.sep, 't-mute sm');
+        y += sepH;
+        continue;
+      }
+      const cy = y + rowH / 2;
+      const vals = MODELS.map(m => ({ m, v: o.value(s.rows, m.key) }));
+      text(svg, 0, cy + 4.5, s.name, s.strong ? 't-ink lab' : 't-ink sm');
+      text(svg, left - 10, cy + 4.5, String(s.rows.length), 't-mute sm tick', 'end');
+      const vs = vals.map(d => d.v);
+      el('line', { x1: x(Math.min(...vs)), x2: x(Math.max(...vs)), y1: cy, y2: cy, class: 'link' }, svg);
+      vals.forEach((d, i) => el('circle', { cx: x(d.v), cy: cy + (i - (vals.length - 1) / 2) * lane, r: 4, class: `f-${d.m.cls} ring` }, svg));
+      const hit = el('rect', { x: 0, y, width: W, height: rowH, class: 'hit' }, svg);
+      bind(hit, [[L.nTasks(s.rows.length), s.name], ...vals.map(d => [o.format(d.v), d.m.name])]);
+      y += rowH;
+    }
+  }
+
+  const GROUPS = [
+    ['Game Development', L.groups.games], ['SVG Generation', L.groups.svg],
+    ['Simulation & Modeling', L.groups.sim], ['Web Applications', L.groups.web],
+  ];
+  const LEVELS = [['easy', L.levels.easy], ['medium', L.levels.medium], ['hard', L.levels.hard]];
+  const creativeSpec = (C, all) => [
+    { name: all, rows: C, strong: true },
+    { sep: L.byCategory },
+    ...GROUPS.map(([g, name]) => ({ name, rows: C.filter(r => r.group === g) })),
+    { sep: L.byLevel },
+    ...LEVELS.map(([l, name]) => ({ name, rows: C.filter(r => r.level === l) })),
+  ];
+
+  function drawScoreRows(box) {
+    dotRows(box, creativeSpec(D.creative, L.allTasks), {
+      label: L.scoreRows.label, max: 100, ticks: xTicks, value: mean, format: v => v.toFixed(1),
+    });
+  }
+
+  const timeRowOpts = (label, max, ticks) => ({
+    label, max, ticks, unit: t => L.sec(t), format: sec,
+    value: (rows, k) => median(rows.map(r => r[k + '_s'])),
+  });
+  function drawTimeGdb(box) {
+    const passes = r => MODELS.filter(m => r[m.key]).length;
+    const spec = [
+      { name: L.timeRows.allGdb, rows: D.gdb, strong: true },
+      { sep: L.timeRows.byPassed },
+      ...MODELS.map((_, i) => MODELS.length - i).concat(0)
+        .map(k => ({ name: L.timeRows.passed(k, MODELS.length), rows: D.gdb.filter(r => passes(r) === k) }))
+        .filter(row => row.rows.length),
+    ];
+    dotRows(box, spec, timeRowOpts(L.timeRows.gdbLabel, 600, [0, 150, 300, 450, 600]));
+  }
+  function drawTimeArt(box) {
+    dotRows(box, creativeSpec(D.creative, L.timeRows.allArt), timeRowOpts(L.timeRows.artLabel, 1200, [0, 300, 600, 900, 1200]));
+  }
+
+  // Quality against time: one dot per setup, labelled beside it.
+  function drawTrade(box, pts, o) {
+    // Tall enough that a label can sit below a dot when Terra's and Sol's dots nearly touch.
+    const W = box.clientWidth, m = { l: 44, r: 16, t: 14, b: 40 }, PH = 270;
+    const PW = W - m.l - m.r, H = m.t + PH + m.b;
+    const svg = svgFor(box, W, H, o.label);
+    const x = v => m.l + PW * v / o.xmax, y = v => m.t + PH * (1 - v / 100);
+    for (const t of xTicks) {
+      el('line', { x1: x(0), x2: x(o.xmax), y1: y(t), y2: y(t), class: t === 0 ? 'axis-l' : 'grid-l' }, svg);
+      text(svg, m.l - 8, y(t) + 4, t + o.yUnit, 't-mute tick', 'end');
+    }
+    for (let t = 0; t <= o.xmax; t += o.xStep) {
+      if (t) el('line', { x1: x(t), x2: x(t), y1: y(0), y2: y(100), class: 'grid-l' }, svg);
+      text(svg, x(t), y(0) + 18, t === o.xmax ? L.sec(t) : String(t), 't-mute tick', t === 0 ? 'start' : t === o.xmax ? 'end' : 'middle');
+    }
+    el('line', { x1: x(0), x2: x(0), y1: y(0), y2: y(100), class: 'axis-l' }, svg);
+    text(svg, m.l + PW / 2, H - 2, o.xTitle, 't-2 sm', 'middle');
+    const dots = pts.map(p => ({ x: x(p.t), y: y(p.v) }));
+    const spots = [[12, 4.5, 'start'], [4, 24, 'start'], [4, -14, 'start'], [-12, 4.5, 'end'], [-4, 24, 'end'], [-4, -14, 'end']];
+    const placed = [];
+    pts.forEach((p, i) => {
+      const { x: cx, y: cy } = dots[i];
+      el('circle', { cx, cy, r: 7, class: `f-${p.cls} ring` }, svg);
+      const lab = text(svg, cx, cy, `${p.name} ${o.fmt(p.v)}`, 't-ink lab halo');
+      const others = dots.filter((_, j) => j !== i).map(d => dotBox(d.x, d.y, 9));
+      placed.push(placeLabel(lab, cx, cy, spots, { x0: m.l, x1: W - 2, y0: 0, y1: H }, others, placed));
+      const hit = el('circle', { cx, cy, r: 16, class: 'hit' }, svg);
+      bind(hit, [[o.fmt(p.v), o.what], [sec(p.t), o.timeWhat], [p.name, L.setup[p.key]]]);
+    });
+  }
+  function drawTradeGdb(box) {
+    const pts = MODELS.map(s => ({ ...s, v: 100 * D.gdb.filter(r => r[s.key]).length / N, t: median(D.gdb.map(r => r[s.key + '_s'])) }));
+    drawTrade(box, pts, { ...L.trade.gdb, xmax: 600, xStep: 150, yUnit: '%', fmt: v => v.toFixed(1) + '%' });
+  }
+  function drawTradeArt(box) {
+    const C = D.creative;
+    const pts = MODELS.map(s => ({ ...s, v: mean(C, s.key), t: median(C.map(r => r[s.key + '_s'])) }));
+    drawTrade(box, pts, { ...L.trade.art, xmax: 800, xStep: 200, yUnit: '', fmt: v => v.toFixed(1) });
+  }
+
+  // Share of tasks whose agent had finished by time t. Timed-out runs never finish,
+  // so a curve stops short of 100% by its timeout count.
+  function drawFinish(box, cfg) {
+    const W = box.clientWidth, m = { l: 42, r: 104, t: 26, b: 30 }, PH = 210;
+    const PW = W - m.l - m.r, H = m.t + PH + m.b, n = cfg.rows.length;
+    const svg = svgFor(box, W, H, cfg.label);
+    const x = t => m.l + PW * t / cfg.limit, y = p => m.t + PH * (1 - p / 100);
+    for (const p of xTicks) {
+      el('line', { x1: x(0), x2: x(cfg.limit), y1: y(p), y2: y(p), class: p === 0 ? 'axis-l' : 'grid-l' }, svg);
+      text(svg, m.l - 8, y(p) + 4, p + '%', 't-mute tick', 'end');
+    }
+    for (const t of fitTicks(cfg.ticks, x, 56)) {
+      text(svg, x(t), H - 8, t === cfg.limit ? L.sec(t) : String(t), 't-mute tick', t === 0 ? 'start' : t === cfg.limit ? 'end' : 'middle');
+    }
+    el('line', { x1: x(cfg.limit), x2: x(cfg.limit), y1: y(0), y2: y(100) - 10, class: 'axis-l' }, svg);
+    text(svg, x(cfg.limit), m.t - 14, L.finish.limit, 't-mute sm', 'end');
+
+    const series = MODELS.map(s => {
+      const done = cfg.rows.filter(r => !r[s.key + '_to']).map(r => r[s.key + '_s']).sort((a, b) => a - b);
+      let d = `M${x(0)},${y(0)}`;
+      done.forEach((t, i) => { d += `H${x(t)}V${y(100 * (i + 1) / n)}`; });
+      el('path', { d: d + `H${x(cfg.limit)}`, class: `step s-${s.cls}` }, svg);
+      return { ...s, done, med: median(cfg.rows.map(r => r[s.key + '_s'])), endY: y(100 * done.length / n) };
+    });
+    // Median dots sit on the 50% line. Three medians can land close together, so their
+    // values go in the legend above the chart rather than beside the dots.
+    for (const s of series) el('circle', { cx: x(s.med), cy: y(50), r: 5, class: `f-${s.cls} ring` }, svg);
+    const legend = box.previousElementSibling;
+    if (legend && legend.matches('ul.legend')) {
+      legend.replaceChildren(...series.map(s => {
+        const li = html('li');
+        html('i', `key line ${s.k}`, li);
+        li.append(L.finish.median(s.name, sec(s.med)));
+        return li;
+      }));
+    }
+    // End labels down the right margin, spread so they never overlap.
+    const ends = [...series].sort((a, b) => a.endY - b.endY);
+    for (let i = 1; i < ends.length; i++) ends[i].endY = Math.max(ends[i].endY, ends[i - 1].endY + 15);
+    for (const s of ends) text(svg, x(cfg.limit) + 8, s.endY + 4, `${s.name} ${s.done.length}/${n}`, 't-ink sm');
+
+    // Crosshair: how many tasks each setup had finished by the hovered time.
+    const cross = el('line', { y1: y(0), y2: y(100), class: 'cross', visibility: 'hidden' }, svg);
+    const hit = el('rect', {
+      x: x(0), y: y(100), width: PW, height: PH, class: 'hit', tabindex: 0, role: 'img',
+      'aria-label': L.finish.aria(cfg.label, series.map(s => L.finish.summary(s.name, s.done.length, n, sec(s.med)))),
+    }, svg);
+    let cur = Math.round(median(series.map(s => s.med)));
+    const show = (t, cx, cy) => {
+      cur = Math.max(0, Math.min(cfg.limit, t));
+      cross.setAttribute('x1', x(cur));
+      cross.setAttribute('x2', x(cur));
+      cross.setAttribute('visibility', 'visible');
+      showTip([[L.finish.within(Math.round(cur))]].concat(series.map(s => [`${s.done.filter(v => v <= cur).length} / ${n}`, L.finish.finished(s.name)])), cx, cy);
+    };
+    const hide = () => { cross.setAttribute('visibility', 'hidden'); hideTip(); };
+    const at = e => (e.clientX - svg.getBoundingClientRect().left - m.l) / PW * cfg.limit;
+    hit.addEventListener('pointerenter', e => show(at(e), e.clientX, e.clientY));
+    hit.addEventListener('pointermove', e => show(at(e), e.clientX, e.clientY));
+    hit.addEventListener('pointerleave', hide);
+    const showFocused = () => { const r = svg.getBoundingClientRect(); show(cur, r.left + x(cur), r.top + m.t); };
+    hit.addEventListener('focus', showFocused);
+    hit.addEventListener('keydown', e => {
+      const step = { ArrowLeft: -1, ArrowRight: 1 }[e.key];
+      if (!step) return;
+      e.preventDefault();
+      cur = Math.max(0, Math.min(cfg.limit, cur + step * cfg.limit / 24));
+      showFocused();
+    });
+    hit.addEventListener('blur', hide);
+  }
+  function drawFinishGdb(box) {
+    drawFinish(box, { rows: D.gdb, limit: 600, ticks: [0, 150, 300, 450, 600], label: L.finish.gdbLabel });
+  }
+  function drawFinishArt(box) {
+    drawFinish(box, { rows: D.creative, limit: 1200, ticks: [0, 300, 600, 900, 1200], label: L.finish.artLabel });
+  }
+
+  function addCell(tr, value, cls) {
+    const td = html('td', cls || '', tr, value);
+    return td;
+  }
+  // Bold the best value in a row: highest score, or shortest time.
+  const bestOf = (r, suffix, pick) => pick(...MODELS.map(m => r[m.key + suffix]));
+
+  function scoreStrip(r) {
+    const W = 128, H = 18, x = v => 6 + (W - 12) * v / 100;
+    const svg = el('svg', { width: W, height: H, viewBox: `0 0 ${W} ${H}` });
+    el('line', { x1: x(0), x2: x(100), y1: H / 2, y2: H / 2, class: 'grid-l' }, svg);
+    for (const t of [0, 50, 100]) el('line', { x1: x(t), x2: x(t), y1: H / 2 - 3, y2: H / 2 + 3, class: 'axis-l' }, svg);
+    for (const m of MODELS) el('circle', { cx: x(r[m.key]), cy: H / 2, r: 4.5, class: `f-${m.cls} ring` }, svg);
+    bind(svg, [[L.task(r.task), r.name], ...MODELS.map(m => [score(r[m.key]), L.judged(m.name, r.j[m.key])])]);
+    return svg;
+  }
+
+  // Abliterated against normal IQ4: same quantization, same harness and settings.
+  function fillAblTable() {
+    const body = document.querySelector('#t-abl tbody');
+    if (!body || !D.abl) return;
+    const A = D.abl;
+    const rows = [
+      [L.abl.rows.pass, `${A.qwen.pass} / ${N}`, `${A.abl.pass} / ${N}`],
+      [L.abl.rows.timeouts, A.qwen.timeouts, A.abl.timeouts],
+      [L.abl.rows.gdbTime, sec(A.qwen.gdbMedian), sec(A.abl.gdbMedian)],
+      [L.abl.rows.score, A.qwen.score.toFixed(1), A.abl.score.toFixed(1)],
+      [L.abl.rows.artTime, sec(A.qwen.artMedian), sec(A.abl.artMedian)],
+      [L.abl.rows.broken, A.qwen.broken, A.abl.broken],
+    ];
+    for (const [label, a, b] of rows) {
+      const tr = html('tr', '', body);
+      const th = html('th', '', tr, label);
+      th.setAttribute('scope', 'row');
+      addCell(tr, String(a), 'n');
+      addCell(tr, String(b), 'n');
+    }
+    const g = A.gdbPair, c = A.artPair;
+    document.getElementById('abl-pairs').textContent = L.abl.pairs(g.onlyA, g.onlyB, pValue(g.p), c.aHigher, c.bHigher, c.ties, pValue(c.p));
+  }
+
+  function fillCreativeTable() {
+    const body = document.querySelector('#t-creative tbody');
+    for (const r of D.creative) {
+      const tr = html('tr', '', body);
+      addCell(tr, r.task, 'id');
+      addCell(tr, r.name);
+      addCell(tr, r.sub);
+      addCell(tr, r.level_label);
+      const best = bestOf(r, '', Math.max);
+      for (const m of MODELS) addCell(tr, score(r[m.key]), 'n' + (r[m.key] === best ? ' best' : ''));
+      addCell(tr, '', 'strip').appendChild(scoreStrip(r));
+      addCell(tr, r.notes.join(L.listSep), 'note');
+    }
+  }
+
+  function fillGdbTable() {
+    const body = document.querySelector('#t-gdb tbody');
+    for (const r of D.gdb) {
+      const tr = html('tr', '', body);
+      addCell(tr, r.task, 'id');
+      const fastest = bestOf(r, '_s', Math.min);
+      for (const m of MODELS) {
+        addCell(tr, r[m.key] ? L.pass : L.fail, r[m.key] ? '' : 'fail');
+        addCell(tr, r[m.key + '_to'] ? L.timedOut(sec(r[m.key + '_s'])) : sec(r[m.key + '_s']), 'n' + (r[m.key + '_s'] === fastest ? ' best' : ''));
+      }
+      addCell(tr, r.astra ? L.pass : L.fail, r.astra ? '' : 'fail');
+    }
+  }
+
+  function fillArtTimeTable() {
+    const body = document.querySelector('#t-art-time tbody');
+    for (const r of D.creative) {
+      const tr = html('tr', '', body);
+      addCell(tr, r.task, 'id');
+      addCell(tr, r.name);
+      const fastest = bestOf(r, '_s', Math.min);
+      for (const m of MODELS) {
+        addCell(tr, r[m.key + '_to'] ? L.timedOut(sec(r[m.key + '_s'])) : sec(r[m.key + '_s']), 'n' + (r[m.key + '_s'] === fastest ? ' best' : ''));
+      }
+    }
+  }
+
+  const charts = [
+    ['c-intervals', drawIntervals], ['c-effort', drawEffort],
+    ['c-score-rows', drawScoreRows],
+    ['c-trade-gdb', drawTradeGdb], ['c-trade-art', drawTradeArt],
+    ['c-finish-gdb', drawFinishGdb], ['c-finish-art', drawFinishArt],
+    ['c-time-gdb', drawTimeGdb], ['c-time-art', drawTimeArt],
+  ];
+  for (const [id, draw] of charts) {
+    const box = document.getElementById(id);
+    let lastWidth = 0;
+    const render = () => {
+      if (box.clientWidth && box.clientWidth !== lastWidth) {
+        lastWidth = box.clientWidth;
+        draw(box);
+      }
+    };
+    render();
+    if ('ResizeObserver' in window) new ResizeObserver(() => requestAnimationFrame(render)).observe(box);
+  }
+  // Screenshot captions read their scores from the data: data-score="<task>:<setup>".
+  const byTask = Object.fromEntries(D.creative.map(r => [r.task, r]));
+  for (const node of document.querySelectorAll('[data-score]')) {
+    const [task, key] = node.dataset.score.split(':');
+    node.textContent = score(byTask[task][key]);
+  }
+  drawMatrix('c-h2h-gdb', D.pairs.gdb, 'gdb');
+  drawMatrix('c-h2h-art', D.pairs.art, 'art');
+  fillAblTable();
+  drawCells();
+  fillCreativeTable();
+  fillGdbTable();
+  fillArtTimeTable();
+})();
+
+</script>
+</body>
+</html>
